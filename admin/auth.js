@@ -426,17 +426,26 @@ function verifyTOTP(token, secret = null) {
         });
         
         // 验证当前时间窗口和前后一个时间窗口
-        const currentTime = Math.floor(Date.now() / 1000);
-        const window = AUTH_CONFIG.period;
-        
+        const currentTime = Date.now();
+        const window = AUTH_CONFIG.period * 1000; // 转换为毫秒
+
+        console.log('🔍 TOTP验证调试信息:');
+        console.log('当前时间戳:', currentTime);
+        console.log('输入验证码:', token);
+
         for (let i = -1; i <= 1; i++) {
-            const timeStep = currentTime + (i * window);
-            const expectedToken = totpInstance.generate({ timestamp: timeStep * 1000 });
-            
+            const timestamp = currentTime + (i * window);
+            const expectedToken = totpInstance.generate({ timestamp: timestamp });
+
+            console.log(`时间窗口 ${i}: 时间戳=${timestamp}, 期望验证码=${expectedToken}`);
+
             if (token === expectedToken) {
+                console.log('✅ 验证成功！匹配的时间窗口:', i);
                 return true;
             }
         }
+
+        console.log('❌ 验证失败，所有时间窗口都不匹配');
         
         return false;
         
