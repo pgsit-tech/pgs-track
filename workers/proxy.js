@@ -9,7 +9,11 @@
 
 // AU-OPS API配置
 const AU_OPS_CONFIG = {
-    baseUrl: 'https://ws.ai-ops.vip/edi/web-services',
+    // 支持两个API地址，优先使用官方地址
+    baseUrls: [
+        'https://prod.au-ops.com/edi/web-services',
+        'https://ws.ai-ops.vip/edi/web-services'
+    ],
     timeout: 30000
 };
 
@@ -100,18 +104,48 @@ async function handleTrackingRequest(request, apiPath, env) {
             return createErrorResponse('服务配置错误', 500);
         }
 
-        // 构建AU-OPS API请求，将认证信息作为URL参数传递
-        const auOpsUrl = `${AU_OPS_CONFIG.baseUrl}${apiPath}?trackingRef=${encodeURIComponent(trackingRef)}&appKey=${encodeURIComponent(appKey)}&appToken=${encodeURIComponent(appToken)}`;
+        // 尝试多个API地址，使用官方推荐的认证方式
+        let auOpsResponse = null;
+        let lastError = null;
 
-        console.log('🎯 AU-OPS API URL:', auOpsUrl.replace(/appToken=[^&]+/, 'appToken=***'));
+        for (const baseUrl of AU_OPS_CONFIG.baseUrls) {
+            try {
+                const auOpsUrl = `${baseUrl}${apiPath}?trackingRef=${encodeURIComponent(trackingRef)}`;
 
-        const auOpsResponse = await fetch(auOpsUrl, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            signal: AbortSignal.timeout(AU_OPS_CONFIG.timeout)
-        });
+                console.log('🎯 尝试AU-OPS API:', baseUrl);
+
+                auOpsResponse = await fetch(auOpsUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'appKey': appKey,
+                        'appToken': appToken,
+                        'Request-Origion': 'SwaggerBootstrapUi',
+                        'accept': 'application/json'
+                    },
+                    signal: AbortSignal.timeout(AU_OPS_CONFIG.timeout)
+                });
+
+                // 如果请求成功，跳出循环
+                if (auOpsResponse.ok) {
+                    console.log('✅ API调用成功:', baseUrl);
+                    break;
+                } else {
+                    console.log(`❌ API调用失败 (${auOpsResponse.status}):`, baseUrl);
+                    lastError = `${baseUrl} returned ${auOpsResponse.status}`;
+                }
+            } catch (error) {
+                console.log(`❌ API调用异常:`, baseUrl, error.message);
+                lastError = error.message;
+                auOpsResponse = null;
+            }
+        }
+
+        // 如果所有API地址都失败
+        if (!auOpsResponse || !auOpsResponse.ok) {
+            console.error('所有AU-OPS API地址都失败');
+            return createErrorResponse('查询失败', 503);
+        }
         
         if (!auOpsResponse.ok) {
             const errorText = await auOpsResponse.text();
@@ -179,8 +213,8 @@ async function handleFMSRequest(request, apiPath, env) {
             queryParams = `shipmentId=${encodeURIComponent(shipmentId)}`;
         }
         
-        // 构建AU-OPS API请求
-        const auOpsUrl = `${AU_OPS_CONFIG.baseUrl}${apiPath}?${queryParams}`;
+        // 构建AU-OPS API请求（使用第一个地址）
+        const auOpsUrl = `${AU_OPS_CONFIG.baseUrls[0]}${apiPath}?${queryParams}`;
         
         const auOpsResponse = await fetch(auOpsUrl, {
             method: 'GET',
