@@ -601,10 +601,20 @@ function showMultiSearchResults(data) {
 function showErrorState(errorMsg) {
     hideAllSections();
 
-    // 统一错误信息，不暴露内部架构
-    let userFriendlyMsg = errorMsg;
-    if (errorMsg.includes('API') || errorMsg.includes('公司') || errorMsg.includes('代理') || errorMsg.includes('Workers')) {
-        userFriendlyMsg = '查询失败，请检查单号格式或稍后重试';
+    // 统一错误信息，不暴露内部架构细节
+    let userFriendlyMsg = '查询失败';
+
+    // 根据用户记忆，不显示内部API实现细节
+    if (errorMsg.includes('API') ||
+        errorMsg.includes('公司') ||
+        errorMsg.includes('代理') ||
+        errorMsg.includes('Workers') ||
+        errorMsg.includes('所有') ||
+        errorMsg.includes('均失败') ||
+        errorMsg.includes('(') && errorMsg.includes('/')) {
+        userFriendlyMsg = '查询失败';
+    } else {
+        userFriendlyMsg = errorMsg;
     }
 
     if (Elements.errorMessage) {

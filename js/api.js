@@ -312,7 +312,8 @@ async function queryTrackingInfoFromAllCompanies(trackingRef) {
         };
     } else {
         console.log(`❌ 所有公司查询均失败`);
-        throw new Error('查询失败，请检查单号格式或稍后重试');
+        // 根据用户要求，不显示内部API架构细节
+        throw new Error('查询失败');
     }
 }
 

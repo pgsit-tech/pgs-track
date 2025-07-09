@@ -19,10 +19,21 @@ let totp = null;
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 页面加载完成，开始初始化...');
 
-    // 检查必要的库是否加载
+    // 等待更长时间确保所有库都加载完成
     setTimeout(() => {
         checkLibrariesAndInit();
-    }, 100);
+    }, 500);
+});
+
+// 监听脚本加载错误
+window.addEventListener('error', function(e) {
+    if (e.filename && e.filename.includes('bootstrap')) {
+        console.warn('Bootstrap加载失败，但不影响认证功能');
+    }
+    if (e.filename && (e.filename.includes('qrcode') || e.filename.includes('otpauth'))) {
+        console.error('关键库加载失败:', e.filename);
+        showToast('系统库加载失败，请刷新页面重试', 'error');
+    }
 });
 
 /**
@@ -253,9 +264,9 @@ function generateSecret() {
                 // 清空容器并创建canvas
                 qrcodeContainer.innerHTML = '';
 
-                // 尝试多种QR码生成方式
+                // 尝试生成QR码
                 try {
-                    // 方法1: 使用toCanvas
+                    // 使用toCanvas方法
                     QRCode.toCanvas(qrcodeContainer, otpAuthUrl, {
                         width: 200,
                         height: 200,
@@ -267,30 +278,10 @@ function generateSecret() {
                         errorCorrectionLevel: 'M'
                     }, function(error) {
                         if (error) {
-                            console.error('Canvas方式失败，尝试DataURL方式:', error);
-                            // 方法2: 使用toDataURL
-                            QRCode.toDataURL(otpAuthUrl, {
-                                width: 200,
-                                margin: 2,
-                                color: {
-                                    dark: '#2563eb',
-                                    light: '#ffffff'
-                                },
-                                errorCorrectionLevel: 'M'
-                            }, function(err, url) {
-                                if (err) {
-                                    console.error('DataURL方式也失败:', err);
-                                    showFallbackQRCode(otpAuthUrl);
-                                } else {
-                                    qrcodeContainer.innerHTML = `
-                                        <img src="${url}" alt="QR Code" style="border: 1px solid #e5e7eb; border-radius: 0.5rem;">
-                                        <p style="margin: 10px 0 0 0; font-size: 14px; color: #6b7280; text-align: center;">使用Google Authenticator扫描</p>
-                                    `;
-                                    console.log('✅ 二维码生成成功 (DataURL方式)');
-                                }
-                            });
+                            console.error('QR码生成失败:', error);
+                            showFallbackQRCode(otpAuthUrl);
                         } else {
-                            console.log('✅ 二维码生成成功 (Canvas方式)');
+                            console.log('✅ 二维码生成成功');
                             // 添加说明文字
                             const description = document.createElement('p');
                             description.style.cssText = 'margin: 10px 0 0 0; font-size: 14px; color: #6b7280; text-align: center;';
@@ -299,7 +290,7 @@ function generateSecret() {
                         }
                     });
                 } catch (canvasError) {
-                    console.error('Canvas创建失败，尝试其他方式:', canvasError);
+                    console.error('QR码生成异常:', canvasError);
                     showFallbackQRCode(otpAuthUrl);
                 }
             } catch (error) {
