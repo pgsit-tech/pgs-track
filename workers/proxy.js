@@ -113,6 +113,9 @@ async function handleTrackingRequest(request, apiPath, env) {
                 const auOpsUrl = `${baseUrl}${apiPath}?trackingRef=${encodeURIComponent(trackingRef)}`;
 
                 console.log('🎯 尝试AU-OPS API:', baseUrl);
+                console.log('🔑 API密钥长度:', appKey ? appKey.length : 'undefined');
+                console.log('🔑 Token长度:', appToken ? appToken.length : 'undefined');
+                console.log('🔑 API密钥前缀:', appKey ? appKey.substring(0, 10) + '...' : 'undefined');
 
                 auOpsResponse = await fetch(auOpsUrl, {
                     method: 'GET',
