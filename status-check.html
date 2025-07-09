@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PGS Tracking System - 状态检查</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .status-card { background: white; border-radius: 8px; padding: 20px; margin: 15px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .status-header { display: flex; align-items: center; margin-bottom: 15px; }
+        .status-icon { font-size: 24px; margin-right: 10px; }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .warning { color: #ffc107; }
+        .loading { color: #007bff; }
+        .test-button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; }
+        .test-button:hover { background: #0056b3; }
+        .test-result { margin-top: 10px; padding: 10px; border-radius: 5px; }
+        .result-success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .result-error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .result-info { background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 PGS Tracking System - 部署状态检查</h1>
+        
+        <div class="status-card">
+            <div class="status-header">
+                <span class="status-icon">🌐</span>
+                <h3>Cloudflare Pages 部署状态</h3>
+            </div>
+            <p>检查前端页面是否正常部署和访问</p>
+            <button class="test-button" onclick="testPagesDeployment()">测试 Pages 部署</button>
+            <div id="pages-result"></div>
+        </div>
+
+        <div class="status-card">
+            <div class="status-header">
+                <span class="status-icon">🔐</span>
+                <h3>Google Authenticator 认证功能</h3>
+            </div>
+            <p>检查认证页面和密钥生成功能</p>
+            <button class="test-button" onclick="testAuthFunction()">测试认证功能</button>
+            <div id="auth-result"></div>
+        </div>
+
+        <div class="status-card">
+            <div class="status-header">
+                <span class="status-icon">⚡</span>
+                <h3>Cloudflare Workers API 代理</h3>
+            </div>
+            <p>检查API代理服务是否正常工作</p>
+            <button class="test-button" onclick="testWorkersAPI()">测试 Workers API</button>
+            <div id="workers-result"></div>
+        </div>
+
+        <div class="status-card">
+            <div class="status-header">
+                <span class="status-icon">📦</span>
+                <h3>查询功能测试</h3>
+            </div>
+            <p>测试完整的查询流程</p>
+            <button class="test-button" onclick="testTrackingQuery()">测试查询功能</button>
+            <div id="query-result"></div>
+        </div>
+
+        <div class="status-card">
+            <div class="status-header">
+                <span class="status-icon">📊</span>
+                <h3>系统整体状态</h3>
+            </div>
+            <div id="overall-status">
+                <p>点击上方测试按钮来检查各个组件的状态</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let testResults = {
+            pages: null,
+            auth: null,
+            workers: null,
+            query: null
+        };
+
+        function updateOverallStatus() {
+            const statusDiv = document.getElementById('overall-status');
+            const results = Object.values(testResults);
+            const completed = results.filter(r => r !== null).length;
+            const passed = results.filter(r => r === true).length;
+            const failed = results.filter(r => r === false).length;
+
+            let statusHTML = `<h4>测试进度: ${completed}/4</h4>`;
+            
+            if (completed === 4) {
+                if (failed === 0) {
+                    statusHTML += `<div class="result-success">🎉 所有测试通过！系统运行正常</div>`;
+                } else {
+                    statusHTML += `<div class="result-error">⚠️ ${failed} 个测试失败，需要检查</div>`;
+                }
+            }
+
+            statusHTML += `
+                <p>✅ 通过: ${passed} | ❌ 失败: ${failed} | ⏳ 待测试: ${4 - completed}</p>
+            `;
+
+            statusDiv.innerHTML = statusHTML;
+        }
+
+        async function testPagesDeployment() {
+            const resultDiv = document.getElementById('pages-result');
+            resultDiv.innerHTML = '<div class="result-info">🔄 正在测试 Cloudflare Pages...</div>';
+
+            try {
+                // 测试主页
+                const mainResponse = await fetch('https://pgs-track.pages.dev/', { method: 'HEAD' });
+                const authResponse = await fetch('https://pgs-track.pages.dev/admin/auth.html', { method: 'HEAD' });
+                
+                if (mainResponse.ok && authResponse.ok) {
+                    testResults.pages = true;
+                    resultDiv.innerHTML = `
+                        <div class="result-success">
+                            ✅ Cloudflare Pages 部署正常<br>
+                            主页状态: ${mainResponse.status}<br>
+                            认证页面状态: ${authResponse.status}
+                        </div>
+                    `;
+                } else {
+                    throw new Error(`主页: ${mainResponse.status}, 认证页面: ${authResponse.status}`);
+                }
+            } catch (error) {
+                testResults.pages = false;
+                resultDiv.innerHTML = `<div class="result-error">❌ Pages 部署测试失败: ${error.message}</div>`;
+            }
+            
+            updateOverallStatus();
+        }
+
+        async function testAuthFunction() {
+            const resultDiv = document.getElementById('auth-result');
+            resultDiv.innerHTML = '<div class="result-info">🔄 正在测试认证功能...</div>';
+
+            try {
+                // 测试认证页面内容
+                const response = await fetch('https://pgs-track.pages.dev/admin/auth.html');
+                const content = await response.text();
+                
+                // 检查关键元素
+                const hasQRCode = content.includes('qrcode');
+                const hasSecretKey = content.includes('secretKey');
+                const hasAuthJS = content.includes('auth.js');
+                const hasOTPAuth = content.includes('otpauth.min.js');
+                
+                if (hasQRCode && hasSecretKey && hasAuthJS && hasOTPAuth) {
+                    testResults.auth = true;
+                    resultDiv.innerHTML = `
+                        <div class="result-success">
+                            ✅ 认证功能组件完整<br>
+                            ✓ 二维码容器<br>
+                            ✓ 密钥显示<br>
+                            ✓ 认证脚本<br>
+                            ✓ OTP库
+                        </div>
+                    `;
+                } else {
+                    throw new Error('认证页面缺少必要组件');
+                }
+            } catch (error) {
+                testResults.auth = false;
+                resultDiv.innerHTML = `<div class="result-error">❌ 认证功能测试失败: ${error.message}</div>`;
+            }
+            
+            updateOverallStatus();
+        }
+
+        async function testWorkersAPI() {
+            const resultDiv = document.getElementById('workers-result');
+            resultDiv.innerHTML = '<div class="result-info">🔄 正在测试 Workers API...</div>';
+
+            try {
+                // 从前端配置获取API URL
+                const configResponse = await fetch('/config/site-config.json');
+                const config = await configResponse.json();
+                
+                if (config.api && config.api.baseUrl) {
+                    // 测试API连接
+                    const testUrl = `${config.api.baseUrl}/api/tracking/v5/tracking?trackingRef=TEST123`;
+                    const apiResponse = await fetch(testUrl, {
+                        method: 'GET',
+                        headers: {
+                            'Origin': 'https://pgs-track.pages.dev'
+                        }
+                    });
+                    
+                    testResults.workers = true;
+                    resultDiv.innerHTML = `
+                        <div class="result-success">
+                            ✅ Workers API 连接正常<br>
+                            API URL: ${config.api.baseUrl}<br>
+                            响应状态: ${apiResponse.status}
+                        </div>
+                    `;
+                } else {
+                    throw new Error('API配置未找到');
+                }
+            } catch (error) {
+                testResults.workers = false;
+                resultDiv.innerHTML = `<div class="result-error">❌ Workers API 测试失败: ${error.message}</div>`;
+            }
+            
+            updateOverallStatus();
+        }
+
+        async function testTrackingQuery() {
+            const resultDiv = document.getElementById('query-result');
+            resultDiv.innerHTML = '<div class="result-info">🔄 正在测试查询功能...</div>';
+
+            try {
+                // 加载查询相关的脚本
+                const scriptsToTest = [
+                    '/js/config-loader.js',
+                    '/js/api.js',
+                    '/js/app.js'
+                ];
+                
+                let allScriptsLoaded = true;
+                const scriptResults = [];
+                
+                for (const script of scriptsToTest) {
+                    try {
+                        const response = await fetch(`https://pgs-track.pages.dev${script}`, { method: 'HEAD' });
+                        scriptResults.push(`${script}: ${response.status}`);
+                        if (!response.ok) allScriptsLoaded = false;
+                    } catch (e) {
+                        scriptResults.push(`${script}: 失败`);
+                        allScriptsLoaded = false;
+                    }
+                }
+                
+                if (allScriptsLoaded) {
+                    testResults.query = true;
+                    resultDiv.innerHTML = `
+                        <div class="result-success">
+                            ✅ 查询功能脚本完整<br>
+                            <pre>${scriptResults.join('\n')}</pre>
+                        </div>
+                    `;
+                } else {
+                    throw new Error('部分查询脚本加载失败');
+                }
+            } catch (error) {
+                testResults.query = false;
+                resultDiv.innerHTML = `<div class="result-error">❌ 查询功能测试失败: ${error.message}</div>`;
+            }
+            
+            updateOverallStatus();
+        }
+
+        // 页面加载时显示当前时间
+        document.addEventListener('DOMContentLoaded', function() {
+            const now = new Date().toLocaleString('zh-CN');
+            document.querySelector('h1').innerHTML += `<br><small style="color: #666;">检查时间: ${now}</small>`;
+        });
+    </script>
+</body>
+</html>
