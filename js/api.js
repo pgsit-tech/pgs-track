@@ -176,20 +176,24 @@ async function queryTrackingInfo(trackingRef, companyId = 'default') {
     }
     
     const headers = createHeaders(companyId);
-    let lastError = null;
     
-    // 尝试v5 API
+    // 使用v5 API（官方推荐版本）
     try {
         console.log(`尝试v5 API查询: ${trackingRef}`);
         const url = `${API_CONFIG.baseUrl}/v5/tracking?trackingRef=${encodeURIComponent(trackingRef)}`;
-        
+
         const response = await fetchWithRetry(url, {
             method: 'GET',
             headers: headers
         });
-        
+
         const data = await response.json();
-        
+
+        // 检查API响应是否成功
+        if (data && data.success === false) {
+            throw new Error(data.error || '查询失败');
+        }
+
         const result = {
             success: true,
             trackingRef: trackingRef,
@@ -198,50 +202,16 @@ async function queryTrackingInfo(trackingRef, companyId = 'default') {
             timestamp: new Date().toISOString(),
             companyId: companyId
         };
-        
+
         // 缓存成功的结果
         TrackingUtils.cacheData(cacheKey, result, 5 * 60 * 1000); // 5分钟缓存
-        
+
         return result;
-        
+
     } catch (error) {
-        console.warn('v5 API查询失败:', error.message);
-        lastError = error;
+        console.error('v5 API查询失败:', error.message);
+        throw new Error('查询失败，请检查单号格式或稍后重试');
     }
-    
-    // 尝试v3 API作为备用
-    try {
-        console.log(`尝试v3 API查询: ${trackingRef}`);
-        const url = `${API_CONFIG.baseUrl}/v3/tracking?trackingRef=${encodeURIComponent(trackingRef)}`;
-        
-        const response = await fetchWithRetry(url, {
-            method: 'GET',
-            headers: headers
-        });
-        
-        const data = await response.json();
-        
-        const result = {
-            success: true,
-            trackingRef: trackingRef,
-            apiVersion: 'v3',
-            data: data,
-            timestamp: new Date().toISOString(),
-            companyId: companyId
-        };
-        
-        // 缓存成功的结果
-        TrackingUtils.cacheData(cacheKey, result, 5 * 60 * 1000); // 5分钟缓存
-        
-        return result;
-        
-    } catch (error) {
-        console.error('v3 API查询也失败:', error.message);
-        lastError = error;
-    }
-    
-    // 所有API都失败
-    throw new Error('查询失败，请检查单号格式或稍后重试');
 }
 
 /**
