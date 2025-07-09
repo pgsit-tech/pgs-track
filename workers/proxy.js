@@ -23,8 +23,7 @@ const AU_OPS_CONFIG = {
 const ALLOWED_ORIGINS = [
     'http://localhost:8080',
     'http://localhost:3000',
-    'https://your-tracking-site.pages.dev',
-    'https://au-ops-tracking.pages.dev'
+    'https://pgs-track.pages.dev'
 ];
 
 // 支持的API端点

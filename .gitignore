@@ -51,6 +51,12 @@ deploy.sh
 deploy.bat
 deploy-production.sh
 
+# Git和部署相关脚本（本地使用）
+setup-git.bat
+setup-git.ps1
+deploy-workers.bat
+deploy-workers.ps1
+
 # 临时文件
 *.tmp
 *.temp
@@ -137,11 +143,14 @@ docs/internal/
 reports/
 coverage/
 
-# Markdown文档（除了README）
+# Markdown文档（保留重要文档）
 *.md
 !README.md
 !CHANGELOG.md
 !LICENSE.md
+!DEPLOYMENT_CHECKLIST.md
+!GITHUB_SETUP.md
+!WORKERS_DEPLOYMENT.md
 
 # ===================================
 # 系统和临时文件

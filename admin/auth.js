@@ -123,7 +123,10 @@ function generateSecret() {
     try {
         // 生成随机密钥
         currentSecret = generateRandomSecret();
-        
+
+        // 保存到全局变量供其他函数使用
+        window.currentSecret = currentSecret;
+
         // 创建TOTP对象
         totp = new OTPAuth.TOTP({
             issuer: AUTH_CONFIG.issuer,
