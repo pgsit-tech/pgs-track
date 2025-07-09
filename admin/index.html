@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PGS Tracking System - 后台管理</title>
+    
+    <!-- Bootstrap 5.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome 6.x -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../css/style.css">
+    
+    <style>
+        .admin-sidebar {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        }
+        
+        .admin-nav-link {
+            color: rgba(255, 255, 255, 0.9) !important;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 0.25rem;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: block;
+        }
+
+        .admin-nav-link:hover,
+        .admin-nav-link.active {
+            color: white !important;
+            background: rgba(255, 255, 255, 0.15) !important;
+            transform: translateX(5px);
+            text-decoration: none;
+        }
+
+        .admin-nav-link i {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .admin-nav-link:hover i,
+        .admin-nav-link.active i {
+            color: white;
+        }
+        
+        .config-section {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .preview-box {
+            border: 2px dashed #e5e7eb;
+            border-radius: 0.5rem;
+            padding: 2rem;
+            text-align: center;
+            background: #f9fafb;
+        }
+        
+        .logo-preview {
+            max-width: 200px;
+            max-height: 100px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 侧边栏 -->
+            <div class="col-md-3 col-lg-2 admin-sidebar p-0">
+                <div class="p-3">
+                    <h4 class="text-white mb-4">
+                        <i class="fas fa-cog me-2"></i>
+                        后台管理
+                    </h4>
+                    
+                    <nav class="nav flex-column">
+                        <a class="nav-link admin-nav-link active" href="#site-config" onclick="showSection('site-config')">
+                            <i class="fas fa-globe me-2"></i>
+                            网站配置
+                        </a>
+                        <a class="nav-link admin-nav-link" href="#branding" onclick="showSection('branding')">
+                            <i class="fas fa-palette me-2"></i>
+                            品牌设置
+                        </a>
+                        <a class="nav-link admin-nav-link" href="#api-config" onclick="showSection('api-config')">
+                            <i class="fas fa-key me-2"></i>
+                            API配置
+                        </a>
+                        <a class="nav-link admin-nav-link" href="#footer-config" onclick="showSection('footer-config')">
+                            <i class="fas fa-info-circle me-2"></i>
+                            页脚信息
+                        </a>
+                        <a class="nav-link admin-nav-link" href="#help-config" onclick="showSection('help-config')">
+                            <i class="fas fa-question-circle me-2"></i>
+                            帮助信息
+                        </a>
+                        <a class="nav-link admin-nav-link" href="#preview" onclick="showSection('preview')">
+                            <i class="fas fa-eye me-2"></i>
+                            预览效果
+                        </a>
+                        <hr class="my-3" style="border-color: rgba(255,255,255,0.2);">
+                        <a class="nav-link admin-nav-link" href="../index.html" target="_blank">
+                            <i class="fas fa-external-link-alt me-2"></i>
+                            查看前台
+                        </a>
+                    </nav>
+                </div>
+            </div>
+            
+            <!-- 主内容区 -->
+            <div class="col-md-9 col-lg-10 p-4">
+                <!-- 网站配置 -->
+                <div id="site-config" class="config-section">
+                    <h3 class="mb-4">
+                        <i class="fas fa-globe text-primary me-2"></i>
+                        网站基本配置
+                    </h3>
+                    
+                    <form id="siteConfigForm">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="siteTitle" class="form-label">网站标题</label>
+                                <input type="text" class="form-control" id="siteTitle" placeholder="AU-OPS 轨迹查询系统">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="siteSubtitle" class="form-label">网站副标题</label>
+                                <input type="text" class="form-control" id="siteSubtitle" placeholder="专业的物流轨迹查询平台">
+                            </div>
+                            <div class="col-12">
+                                <label for="siteDescription" class="form-label">网站描述</label>
+                                <textarea class="form-control" id="siteDescription" rows="3" placeholder="基于AU-OPS API的物流轨迹查询系统，支持多种单号格式查询"></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="siteKeywords" class="form-label">关键词</label>
+                                <input type="text" class="form-control" id="siteKeywords" placeholder="物流查询,轨迹查询,AU-OPS,快递查询">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="siteAuthor" class="form-label">作者</label>
+                                <input type="text" class="form-control" id="siteAuthor" placeholder="AU-OPS Team">
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <button type="button" class="btn btn-primary" onclick="saveSiteConfig()">
+                                <i class="fas fa-save me-2"></i>保存配置
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary ms-2" onclick="resetSiteConfig()">
+                                <i class="fas fa-undo me-2"></i>重置
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- 品牌设置 -->
+                <div id="branding" class="config-section d-none">
+                    <h3 class="mb-4">
+                        <i class="fas fa-palette text-primary me-2"></i>
+                        品牌设置
+                    </h3>
+                    
+                    <form id="brandingForm">
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <label for="logoUrl" class="form-label">Logo URL</label>
+                                <input type="text" class="form-control" id="logoUrl" placeholder="assets/logo.svg">
+                                <div class="form-text">支持相对路径或完整URL</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="faviconUrl" class="form-label">Favicon URL</label>
+                                <input type="text" class="form-control" id="faviconUrl" placeholder="assets/favicon.svg">
+                            </div>
+                            
+                            <div class="col-12">
+                                <label class="form-label">Logo预览</label>
+                                <div class="preview-box">
+                                    <img id="logoPreview" src="../assets/logo.svg" alt="Logo预览" class="logo-preview">
+                                    <p class="text-muted mt-2">Logo预览效果</p>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="primaryColor" class="form-label">主色调</label>
+                                <div class="input-group">
+                                    <input type="color" class="form-control form-control-color" id="primaryColor" value="#2563eb">
+                                    <input type="text" class="form-control" id="primaryColorText" value="#2563eb">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="secondaryColor" class="form-label">辅助色</label>
+                                <div class="input-group">
+                                    <input type="color" class="form-control form-control-color" id="secondaryColor" value="#10b981">
+                                    <input type="text" class="form-control" id="secondaryColorText" value="#10b981">
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="companyName" class="form-label">公司简称</label>
+                                <input type="text" class="form-control" id="companyName" placeholder="AU-OPS">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="companyFullName" class="form-label">公司全称</label>
+                                <input type="text" class="form-control" id="companyFullName" placeholder="AU-OPS 物流科技有限公司">
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <button type="button" class="btn btn-primary" onclick="saveBrandingConfig()">
+                                <i class="fas fa-save me-2"></i>保存设置
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary ms-2" onclick="resetBrandingConfig()">
+                                <i class="fas fa-undo me-2"></i>重置
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- 页脚配置 -->
+                <div id="footer-config" class="config-section d-none">
+                    <h3 class="mb-4">
+                        <i class="fas fa-info-circle text-primary me-2"></i>
+                        页脚信息配置
+                    </h3>
+
+                    <form id="footerConfigForm">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label for="footerCopyright" class="form-label">版权信息</label>
+                                <input type="text" class="form-control" id="footerCopyright" placeholder="© 2025 AU-OPS 物流科技有限公司. 保留所有权利.">
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="supportEmail" class="form-label">技术支持邮箱</label>
+                                <input type="email" class="form-control" id="supportEmail" placeholder="support@au-ops.com">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="supportPhone" class="form-label">服务热线</label>
+                                <input type="text" class="form-control" id="supportPhone" placeholder="400-123-4567">
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label">页脚链接</label>
+                                <div id="footerLinks">
+                                    <!-- 动态生成页脚链接 -->
+                                </div>
+                                <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addFooterLink()">
+                                    <i class="fas fa-plus me-1"></i>添加链接
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <button type="button" class="btn btn-primary" onclick="saveFooterConfig()">
+                                <i class="fas fa-save me-2"></i>保存配置
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary ms-2" onclick="resetFooterConfig()">
+                                <i class="fas fa-undo me-2"></i>重置
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- API配置 -->
+                <div id="api-config" class="config-section d-none">
+                    <h3 class="mb-4">
+                        <i class="fas fa-key text-primary me-2"></i>
+                        API配置
+                    </h3>
+                    
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>安全提示：</strong>API密钥配置需要在Cloudflare Workers中设置，此处仅配置公司信息。
+                    </div>
+                    
+                    <div id="companiesConfig">
+                        <!-- 动态生成公司配置 -->
+                    </div>
+                    
+                    <div class="mt-4">
+                        <button type="button" class="btn btn-success" onclick="addCompany()">
+                            <i class="fas fa-plus me-2"></i>添加公司
+                        </button>
+                        <button type="button" class="btn btn-primary ms-2" onclick="saveAPIConfig()">
+                            <i class="fas fa-save me-2"></i>保存配置
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 帮助信息配置 -->
+                <div id="help-config" class="config-section d-none">
+                    <h3 class="mb-4">
+                        <i class="fas fa-question-circle text-primary me-2"></i>
+                        帮助信息配置
+                    </h3>
+                    
+                    <form id="helpConfigForm">
+                        <div class="mb-4">
+                            <h5>支持的单号格式</h5>
+                            <div id="supportedFormats">
+                                <!-- 动态生成格式配置 -->
+                            </div>
+                            <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addFormat()">
+                                <i class="fas fa-plus me-1"></i>添加格式
+                            </button>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h5>功能特性</h5>
+                            <div id="features">
+                                <!-- 动态生成功能特性 -->
+                            </div>
+                            <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addFeature()">
+                                <i class="fas fa-plus me-1"></i>添加特性
+                            </button>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h5>使用技巧</h5>
+                            <div id="tips">
+                                <!-- 动态生成使用技巧 -->
+                            </div>
+                            <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addTip()">
+                                <i class="fas fa-plus me-1"></i>添加技巧
+                            </button>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <button type="button" class="btn btn-primary" onclick="saveHelpConfig()">
+                                <i class="fas fa-save me-2"></i>保存配置
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary ms-2" onclick="resetHelpConfig()">
+                                <i class="fas fa-undo me-2"></i>重置
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- 预览效果 -->
+                <div id="preview" class="config-section d-none">
+                    <h3 class="mb-4">
+                        <i class="fas fa-eye text-primary me-2"></i>
+                        预览效果
+                    </h3>
+                    
+                    <div class="row g-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">配置文件预览</h5>
+                                    <pre id="configPreview" class="bg-light p-3 rounded" style="max-height: 400px; overflow-y: auto;"></pre>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-12">
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-success" onclick="downloadConfig()">
+                                    <i class="fas fa-download me-2"></i>下载配置文件
+                                </button>
+                                <button type="button" class="btn btn-primary" onclick="applyConfig()">
+                                    <i class="fas fa-check me-2"></i>应用配置
+                                </button>
+                                <button type="button" class="btn btn-outline-info" onclick="refreshPreview()">
+                                    <i class="fas fa-refresh me-2"></i>刷新预览
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bootstrap 5.3 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Authentication Check -->
+    <script>
+        // 检查认证状态
+        document.addEventListener('DOMContentLoaded', function() {
+            const isAuthenticated = sessionStorage.getItem('au_ops_authenticated');
+            const hasSecret = localStorage.getItem('au_ops_auth_secret');
+
+            if (!isAuthenticated || !hasSecret) {
+                // 未认证，跳转到认证页面
+                window.location.href = 'auth.html';
+                return;
+            }
+
+            // 添加登出功能
+            const logoutBtn = document.createElement('a');
+            logoutBtn.className = 'nav-link admin-nav-link';
+            logoutBtn.href = '#';
+            logoutBtn.innerHTML = '<i class="fas fa-sign-out-alt me-2"></i>安全退出';
+            logoutBtn.onclick = function() {
+                if (confirm('确定要退出后台管理吗？')) {
+                    sessionStorage.removeItem('au_ops_authenticated');
+                    window.location.href = 'auth.html';
+                }
+            };
+
+            // 添加到导航菜单
+            const nav = document.querySelector('.nav.flex-column');
+            const hr = nav.querySelector('hr');
+            nav.insertBefore(logoutBtn, hr);
+        });
+    </script>
+
+    <!-- Admin JavaScript -->
+    <script src="admin.js"></script>
+</body>
+</html>

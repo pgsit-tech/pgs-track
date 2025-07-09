@@ -1,0 +1,126 @@
+{
+  "site": {
+    "title": "PGS Tracking System",
+    "subtitle": "专业的物流轨迹查询平台",
+    "description": "PGS专业物流轨迹查询系统，支持多种单号格式查询",
+    "keywords": "物流查询,轨迹查询,PGS,快递查询",
+    "author": "PGS Team",
+    "version": "1.0.0"
+  },
+  "branding": {
+    "logoUrl": "assets/logo.svg",
+    "faviconUrl": "assets/favicon.svg",
+    "primaryColor": "#2563eb",
+    "secondaryColor": "#10b981",
+    "companyName": "PGS",
+    "companyFullName": "PGS 物流科技有限公司"
+  },
+  "footer": {
+    "copyright": "© 2025 PGS 物流科技有限公司. 保留所有权利.",
+    "links": [
+      {
+        "text": "使用条款",
+        "url": "#",
+        "target": "_self"
+      },
+      {
+        "text": "隐私政策",
+        "url": "#",
+        "target": "_self"
+      },
+      {
+        "text": "联系我们",
+        "url": "mailto:support@pgs.com",
+        "target": "_blank"
+      }
+    ],
+    "additionalInfo": "技术支持: support@pgs.com | 服务热线: 400-123-4567",
+    "supportEmail": "support@pgs.com",
+    "supportPhone": "400-123-4567"
+  },
+  "help": {
+    "supportedFormats": [
+      {
+        "name": "JobNum",
+        "description": "作业单号",
+        "example": "KD2412002091"
+      },
+      {
+        "name": "PO号",
+        "description": "采购订单号",
+        "example": "BESH2412170032"
+      },
+      {
+        "name": "跟踪号",
+        "description": "物流跟踪号",
+        "example": "43005822480"
+      },
+      {
+        "name": "Reference ID",
+        "description": "参考编号",
+        "example": "REF123456789"
+      },
+      {
+        "name": "Shipment ID",
+        "description": "货运编号",
+        "example": "SHP-2024-001"
+      }
+    ],
+    "features": [
+      "自动识别单号类型，无需手动选择",
+      "支持多个单号同时查询，最多50个",
+      "多公司API汇聚查询，提高成功率",
+      "实时轨迹信息，5分钟智能缓存",
+      "支持多种分隔符：换行、逗号、分号",
+      "查询结果支持导出CSV格式"
+    ],
+    "tips": [
+      "可以直接粘贴Excel中的单号列表",
+      "支持中英文标点符号分隔",
+      "自动去除重复单号",
+      "查询失败时会自动重试"
+    ]
+  },
+  "api": {
+    "companies": [
+      {
+        "id": "company1",
+        "name": "总公司",
+        "priority": 1,
+        "enabled": true
+      },
+      {
+        "id": "company2", 
+        "name": "分公司A",
+        "priority": 2,
+        "enabled": true
+      },
+      {
+        "id": "company3",
+        "name": "分公司B", 
+        "priority": 3,
+        "enabled": true
+      },
+      {
+        "id": "company4",
+        "name": "分公司C",
+        "priority": 4,
+        "enabled": false
+      }
+    ],
+    "settings": {
+      "timeout": 30000,
+      "maxRetries": 3,
+      "cacheTimeout": 300000,
+      "maxBatchSize": 50,
+      "queryDelay": 800
+    }
+  },
+  "ui": {
+    "theme": "blue",
+    "animations": true,
+    "showCompanySource": true,
+    "showQueryStats": true,
+    "compactMode": false
+  }
+}

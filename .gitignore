@@ -1,0 +1,220 @@
+# PGS Tracking System - Git Ignore File
+
+# ===================================
+# 开发环境文件
+# ===================================
+
+# 本地开发服务器
+start-server.py
+*.pyc
+__pycache__/
+
+# 编辑器和IDE文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ===================================
+# 配置和密钥文件
+# ===================================
+
+# API密钥配置文件（包含敏感信息）
+config/api-config.json
+config/api-keys.json
+config/secrets.json
+
+# 环境变量文件
+.env
+.env.local
+.env.production
+.env.staging
+
+# Cloudflare Workers配置（包含密钥）
+wrangler.toml
+.wrangler/
+
+# ===================================
+# 构建和部署文件
+# ===================================
+
+# 构建输出目录
+dist/
+build/
+out/
+
+# 部署脚本（可能包含敏感信息）
+deploy.sh
+deploy.bat
+deploy-production.sh
+
+# 临时文件
+*.tmp
+*.temp
+temp/
+tmp/
+
+# ===================================
+# 日志和缓存文件
+# ===================================
+
+# 日志文件
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 缓存目录
+.cache/
+.parcel-cache/
+.next/
+.nuxt/
+
+# ===================================
+# Node.js 相关
+# ===================================
+
+# 依赖目录
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# ===================================
+# 存档和备份文件
+# ===================================
+
+# 存档目录
+archive/
+backup/
+old/
+
+# 压缩文件
+*.zip
+*.rar
+*.7z
+*.tar.gz
+
+# 备份文件
+*.bak
+*.backup
+*.old
+
+# ===================================
+# 测试和开发文件
+# ===================================
+
+# 测试文件
+test-*.html
+test-*.js
+test/
+tests/
+__tests__/
+
+# 开发配置
+config-development.js
+config-local.js
+
+# 示例文件
+*.example.js
+*.sample.js
+
+# ===================================
+# 文档和报告文件
+# ===================================
+
+# 开发文档（保留README.md）
+docs/development/
+docs/internal/
+
+# 报告文件
+reports/
+coverage/
+
+# Markdown文档（除了README）
+*.md
+!README.md
+!CHANGELOG.md
+!LICENSE.md
+
+# ===================================
+# 系统和临时文件
+# ===================================
+
+# Windows系统文件
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# macOS系统文件
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux系统文件
+*~
+.directory
+
+# 临时文件
+*.tmp
+*.temp
+.tmp/
+.temp/
+
+# ===================================
+# 安全相关文件
+# ===================================
+
+# 私钥文件
+*.pem
+*.key
+*.p12
+*.pfx
+
+# 证书文件
+*.crt
+*.cer
+
+# 认证配置
+auth-config.json
+oauth-config.json
+
+# ===================================
+# 特定于项目的排除
+# ===================================
+
+# 本地配置覆盖
+config/local-override.json
+config/site-config.local.json
+
+# 用户上传的资源
+uploads/
+user-content/
+
+# 生成的资源
+generated/
+auto-generated/
+
+# 性能分析文件
+*.cpuprofile
+*.heapprofile
+
+# ===================================
+# 注释说明
+# ===================================
+
+# 此文件确保敏感信息不会被提交到Git仓库
+# 包括API密钥、配置文件、临时文件等
+# 
+# 如需添加新的排除规则，请按类别添加并注释说明
+# 
+# 重要提醒：
+# - config/api-config.json 包含API密钥，绝不能提交
+# - wrangler.toml 包含Cloudflare配置，需要本地配置
+# - .env 文件包含环境变量，不应提交到仓库

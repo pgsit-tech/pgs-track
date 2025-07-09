@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="PGS物流轨迹查询系统 - 支持JobNum、PO号、跟踪号等多种单号类型查询">
+    <meta name="keywords" content="物流查询,轨迹跟踪,PGS,快递查询,订单跟踪">
+    <title>PGS Tracking System</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+    
+    <!-- Bootstrap 5.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome 6.x -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+    <!-- Navigation Header -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
+        <div class="container">
+            <!-- Logo -->
+            <a class="navbar-brand d-flex align-items-center" href="#">
+                <img src="assets/logo.svg" alt="PGS Logo" height="40" class="me-2">
+                <span class="fw-bold text-primary">PGS Tracking</span>
+            </a>
+            
+            <!-- Mobile Toggle -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <!-- Navigation Menu -->
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#home">
+                            <i class="fas fa-home me-1"></i>轨迹查询
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="clearResults()">
+                            <i class="fas fa-refresh me-1"></i>清空结果
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showHelp()">
+                            <i class="fas fa-question-circle me-1"></i>使用帮助
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Hero Section -->
+        <section class="hero-section bg-gradient-primary text-white py-5">
+            <div class="container">
+                <div class="row justify-content-center text-center">
+                    <div class="col-lg-8">
+                        <h1 class="display-4 fw-bold mb-3">
+                            <i class="fas fa-shipping-fast me-3"></i>
+                            物流轨迹查询
+                        </h1>
+                        <p class="lead mb-4">
+                            支持JobNum、PO号、跟踪号等多种单号类型，实时查询物流轨迹信息
+                        </p>
+                        <div class="hero-stats d-flex justify-content-center gap-4 flex-wrap">
+                            <div class="stat-item">
+                                <i class="fas fa-check-circle text-success"></i>
+                                <span class="ms-2">实时查询</span>
+                            </div>
+                            <div class="stat-item">
+                                <i class="fas fa-globe text-info"></i>
+                                <span class="ms-2">全球物流</span>
+                            </div>
+                            <div class="stat-item">
+                                <i class="fas fa-mobile-alt text-warning"></i>
+                                <span class="ms-2">移动友好</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Search Section -->
+        <section class="search-section py-5" id="home">
+            <div class="container">
+                <div class="row justify-content-center">
+                    <div class="col-lg-10">
+                        <!-- Search Form Card -->
+                        <div class="card shadow-lg border-0 rounded-3">
+                            <div class="card-body p-4">
+                                <h3 class="card-title text-center mb-4">
+                                    <i class="fas fa-search text-primary me-2"></i>
+                                    PGS 物流轨迹查询
+                                </h3>
+
+                                <!-- Search Form -->
+                                <form id="searchForm" class="needs-validation" novalidate>
+                                    <div class="row g-3">
+                                        <!-- Multi-line Search Input -->
+                                        <div class="col-12">
+                                            <label for="searchInput" class="form-label">
+                                                单号查询
+                                                <span class="text-muted">(支持多个单号，每行一个或用逗号分隔)</span>
+                                            </label>
+                                            <div class="input-group">
+                                                <textarea class="form-control form-control-lg"
+                                                         id="searchInput"
+                                                         rows="4"
+                                                         placeholder="请输入单号，支持多个单号同时查询，每行一个单号或用逗号隔开"
+                                                         required></textarea>
+                                                <div class="input-group-append-vertical">
+                                                    <button class="btn btn-primary btn-lg h-100" type="submit" id="searchBtn">
+                                                        <i class="fas fa-search me-2"></i>
+                                                        <span class="d-none d-md-inline">开始查询</span>
+                                                        <span class="d-md-none">查询</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="form-text">
+                                                <i class="fas fa-info-circle me-1"></i>
+                                                自动识别单号类型：JobNum、PO号、跟踪号、Reference ID、Shipment ID 等
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+
+                                <!-- Quick Search Examples -->
+                                <div class="mt-4">
+                                    <h6 class="text-muted mb-2">
+                                        <i class="fas fa-lightbulb me-1"></i>
+                                        快速测试
+                                    </h6>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <button class="btn btn-outline-secondary btn-sm quick-search" data-value="KD2412002091">
+                                            KD2412002091
+                                        </button>
+                                        <button class="btn btn-outline-secondary btn-sm quick-search" data-value="KD2412002092">
+                                            KD2412002092
+                                        </button>
+                                        <button class="btn btn-outline-secondary btn-sm quick-search" data-value="BESH2412170032">
+                                            BESH2412170032
+                                        </button>
+                                        <button class="btn btn-outline-secondary btn-sm quick-search" data-value="KD2412002091,KD2412002092,BESH2412170032">
+                                            批量测试
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Loading Section -->
+        <section class="loading-section d-none" id="loadingSection">
+            <div class="container">
+                <div class="row justify-content-center">
+                    <div class="col-lg-8">
+                        <div class="text-center">
+                            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-3 text-muted">正在查询轨迹信息，请稍候...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section class="results-section py-5 d-none" id="resultsSection">
+            <div class="container">
+                <div class="row justify-content-center">
+                    <div class="col-lg-10">
+                        <!-- Results Header -->
+                        <div class="results-header mb-4">
+                            <h3 class="mb-3">
+                                <i class="fas fa-route text-success me-2"></i>
+                                轨迹查询结果
+                            </h3>
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                                <div class="result-info">
+                                    <span class="badge bg-primary me-2" id="resultJobNum">JobNum: -</span>
+                                    <span class="badge bg-info me-2" id="resultApiVersion">API: -</span>
+                                    <span class="badge bg-success" id="resultTimestamp">查询时间: -</span>
+                                </div>
+                                <div class="result-actions">
+                                    <button class="btn btn-outline-primary btn-sm" id="exportBtn">
+                                        <i class="fas fa-download me-1"></i>导出
+                                    </button>
+                                    <button class="btn btn-outline-secondary btn-sm" id="shareBtn">
+                                        <i class="fas fa-share me-1"></i>分享
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Results Content -->
+                        <div class="results-content" id="resultsContent">
+                            <!-- 轨迹结果将在这里动态生成 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Error Section -->
+        <section class="error-section py-5 d-none" id="errorSection">
+            <div class="container">
+                <div class="row justify-content-center">
+                    <div class="col-lg-8">
+                        <div class="alert alert-danger" role="alert">
+                            <h4 class="alert-heading">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                查询失败
+                            </h4>
+                            <p class="mb-0" id="errorMessage">
+                                查询过程中发生错误，请检查单号格式或稍后重试。
+                            </p>
+                            <hr>
+                            <div class="mb-0">
+                                <button class="btn btn-outline-danger" id="retryBtn">
+                                    <i class="fas fa-redo me-1"></i>重试
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer bg-dark text-light py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-8">
+                    <h6 class="fw-bold company-name">PGS</h6>
+                    <p class="footer-copyright mb-1">© 2025 PGS 物流科技有限公司. 保留所有权利.</p>
+                    <p class="footer-additional-info mb-0 text-muted">技术支持: support@pgs.com | 服务热线: 400-123-4567</p>
+                </div>
+                <div class="col-md-4 text-md-end">
+                    <div class="footer-links mb-2">
+                        <a href="#" class="text-muted">使用条款</a> |
+                        <a href="#" class="text-muted">隐私政策</a> |
+                        <a href="mailto:support@pgs.com" class="text-muted">联系我们</a>
+                    </div>
+                    <div class="mt-2">
+                        <span class="badge bg-success me-1">
+                            <i class="fas fa-check me-1"></i>API状态: 正常
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5.3 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Configuration Loader -->
+    <script src="js/config-loader.js"></script>
+
+    <!-- Production Configuration -->
+    <script src="config-production.js"></script>
+
+    <!-- Custom JavaScript -->
+    <script src="js/utils.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

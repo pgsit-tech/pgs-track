@@ -1,0 +1,52 @@
+{
+  "companies": {
+    "company1": {
+      "name": "总公司",
+      "appKey": "your-company1-app-key-here",
+      "appToken": "your-company1-app-token-here",
+      "baseUrl": "https://prod.au-ops.com/edi/web-services",
+      "priority": 1,
+      "enabled": true
+    },
+    "company2": {
+      "name": "分公司A",
+      "appKey": "your-company2-app-key-here", 
+      "appToken": "your-company2-app-token-here",
+      "baseUrl": "https://prod.au-ops.com/edi/web-services",
+      "priority": 2,
+      "enabled": true
+    },
+    "company3": {
+      "name": "分公司B",
+      "appKey": "your-company3-app-key-here",
+      "appToken": "your-company3-app-token-here", 
+      "baseUrl": "https://prod.au-ops.com/edi/web-services",
+      "priority": 3,
+      "enabled": true
+    },
+    "company4": {
+      "name": "分公司C",
+      "appKey": "your-company4-app-key-here",
+      "appToken": "your-company4-app-token-here",
+      "baseUrl": "https://prod.au-ops.com/edi/web-services", 
+      "priority": 4,
+      "enabled": false
+    }
+  },
+  "proxy": {
+    "enabled": true,
+    "url": "https://au-ops-proxy.your-domain.workers.dev",
+    "corsOrigins": [
+      "https://your-tracking-site.pages.dev",
+      "https://tracking.your-domain.com",
+      "http://localhost:8080"
+    ]
+  },
+  "security": {
+    "encryptKeys": false,
+    "allowedDomains": [
+      "your-tracking-site.pages.dev",
+      "tracking.your-domain.com"
+    ]
+  }
+}

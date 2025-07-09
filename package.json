@@ -1,0 +1,73 @@
+{
+  "name": "au-ops-tracking-system",
+  "version": "1.0.0",
+  "description": "AU-OPS物流轨迹查询系统 - 基于AU-OPS API的专业物流轨迹查询平台",
+  "main": "index.html",
+  "scripts": {
+    "dev": "python -m http.server 8000",
+    "serve": "npx serve .",
+    "build": "echo 'No build process needed for static site'",
+    "deploy": "echo 'Deploy to Cloudflare Pages'",
+    "test": "echo 'No tests specified'"
+  },
+  "keywords": [
+    "logistics",
+    "tracking",
+    "au-ops",
+    "shipping",
+    "frontend",
+    "static-site"
+  ],
+  "author": "AU-OPS Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/au-ops-tracking.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/au-ops-tracking/issues"
+  },
+  "homepage": "https://your-tracking-site.pages.dev",
+  "devDependencies": {
+    "serve": "^14.2.1"
+  },
+  "dependencies": {},
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead",
+    "not ie 11"
+  ],
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "config": {
+    "api": {
+      "baseUrl": "https://prod.au-ops.com/edi/web-services",
+      "version": "v5",
+      "fallbackVersion": "v3",
+      "timeout": 30000
+    },
+    "features": {
+      "batchQuery": true,
+      "multiCompany": true,
+      "exportData": true,
+      "queryHistory": true
+    },
+    "ui": {
+      "theme": "blue",
+      "responsive": true,
+      "animations": true
+    }
+  },
+  "cloudflare": {
+    "pages": {
+      "buildCommand": "",
+      "buildOutputDirectory": "/",
+      "rootDirectory": "track check"
+    },
+    "workers": {
+      "proxyScript": "workers/proxy.js"
+    }
+  }
+}
