@@ -100,15 +100,15 @@ async function handleTrackingRequest(request, apiPath, env) {
             return createErrorResponse('服务配置错误', 500);
         }
 
-        // 构建AU-OPS API请求
-        const auOpsUrl = `${AU_OPS_CONFIG.baseUrl}${apiPath}?trackingRef=${encodeURIComponent(trackingRef)}`;
+        // 构建AU-OPS API请求，将认证信息作为URL参数传递
+        const auOpsUrl = `${AU_OPS_CONFIG.baseUrl}${apiPath}?trackingRef=${encodeURIComponent(trackingRef)}&appKey=${encodeURIComponent(appKey)}&appToken=${encodeURIComponent(appToken)}`;
+
+        console.log('🎯 AU-OPS API URL:', auOpsUrl.replace(/appToken=[^&]+/, 'appToken=***'));
 
         const auOpsResponse = await fetch(auOpsUrl, {
             method: 'GET',
             headers: {
-                'Content-Type': 'application/json',
-                'appKey': appKey,
-                'appToken': appToken
+                'Content-Type': 'application/json'
             },
             signal: AbortSignal.timeout(AU_OPS_CONFIG.timeout)
         });
