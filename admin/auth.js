@@ -426,11 +426,11 @@ function verifyTOTP(token, secret = null) {
         });
         
         // 验证当前时间窗口和前后一个时间窗口
-        const currentTime = Date.now();
-        const window = AUTH_CONFIG.period * 1000; // 转换为毫秒
+        const currentTime = Math.floor(Date.now() / 1000); // 转换为秒级时间戳
+        const window = AUTH_CONFIG.period; // 时间窗口（秒）
 
         console.log('🔍 TOTP验证调试信息:');
-        console.log('当前时间戳:', currentTime);
+        console.log('当前时间戳(秒):', currentTime);
         console.log('输入验证码:', token);
 
         for (let i = -1; i <= 1; i++) {

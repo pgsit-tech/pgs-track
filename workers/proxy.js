@@ -124,7 +124,10 @@ async function handleTrackingRequest(request, apiPath, env) {
                         'appKey': appKey,
                         'appToken': appToken,
                         'Request-Origion': 'SwaggerBootstrapUi',
-                        'accept': 'application/json'
+                        'accept': 'application/json',
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                        'Referer': 'https://prod.au-ops.com/',
+                        'Origin': 'https://prod.au-ops.com'
                     },
                     signal: AbortSignal.timeout(AU_OPS_CONFIG.timeout)
                 });
