@@ -17,7 +17,7 @@ const API_CONFIG = {
 
         // 本地开发环境
         if (hostname === 'localhost' || hostname === '127.0.0.1') {
-            return 'https://prod.au-ops.com/edi/web-services';
+            return 'https://ws.ai-ops.vip/edi/web-services';
         }
 
         // 检查是否有环境变量配置的代理URL
@@ -32,7 +32,7 @@ const API_CONFIG = {
         }
 
         // 默认回退到直接调用（可能会有CORS问题）
-        return 'https://prod.au-ops.com/edi/web-services';
+        return 'https://ws.ai-ops.vip/edi/web-services';
     })(),
     
     // API版本配置

@@ -9,7 +9,7 @@
 
 // AU-OPS API配置
 const AU_OPS_CONFIG = {
-    baseUrl: 'https://prod.au-ops.com/edi/web-services',
+    baseUrl: 'https://ws.ai-ops.vip/edi/web-services',
     timeout: 30000
 };
 

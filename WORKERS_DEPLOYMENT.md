@@ -67,7 +67,7 @@ name = "pgs-tracking-proxy"
 
 [vars]
 ENVIRONMENT = "production"
-API_BASE_URL = "https://prod.au-ops.com/edi/web-services"
+API_BASE_URL = "https://ws.ai-ops.vip/edi/web-services"
 CORS_ORIGINS = "https://pgs-track.pages.dev,https://localhost:8080"
 ```
 

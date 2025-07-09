@@ -43,7 +43,7 @@
   },
   "config": {
     "api": {
-      "baseUrl": "https://prod.au-ops.com/edi/web-services",
+      "baseUrl": "https://ws.ai-ops.vip/edi/web-services",
       "version": "v5",
       "fallbackVersion": "v3",
       "timeout": 30000
