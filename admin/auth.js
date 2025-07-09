@@ -17,8 +17,72 @@ let totp = null;
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
-    initializeAuth();
+    console.log('🚀 页面加载完成，开始初始化...');
+
+    // 检查必要的库是否加载
+    setTimeout(() => {
+        checkLibrariesAndInit();
+    }, 100);
 });
+
+/**
+ * 检查库加载状态并初始化
+ */
+function checkLibrariesAndInit() {
+    console.log('🔍 检查库加载状态...');
+
+    let allLibrariesLoaded = true;
+    const missingLibraries = [];
+
+    if (typeof OTPAuth === 'undefined') {
+        allLibrariesLoaded = false;
+        missingLibraries.push('OTPAuth');
+        console.error('❌ OTPAuth库未加载');
+    } else {
+        console.log('✅ OTPAuth库已加载');
+
+        if (typeof OTPAuth.Secret === 'undefined') {
+            console.error('❌ OTPAuth.Secret未定义');
+        } else {
+            console.log('✅ OTPAuth.Secret已定义');
+        }
+    }
+
+    if (typeof QRCode === 'undefined') {
+        console.warn('⚠️ QRCode库未加载，将使用备用方案');
+    } else {
+        console.log('✅ QRCode库已加载');
+    }
+
+    if (allLibrariesLoaded) {
+        console.log('✅ 所有必要库已加载，开始初始化认证系统');
+        initializeAuth();
+    } else {
+        console.error('❌ 缺少必要库:', missingLibraries.join(', '));
+        showToast(`系统初始化失败：缺少${missingLibraries.join(', ')}库`, 'error');
+
+        // 显示错误界面
+        showLibraryErrorView();
+    }
+}
+
+/**
+ * 显示库加载错误界面
+ */
+function showLibraryErrorView() {
+    const container = document.querySelector('.container');
+    if (container) {
+        container.innerHTML = `
+            <div class="alert alert-danger">
+                <h4><i class="fas fa-exclamation-triangle me-2"></i>系统初始化失败</h4>
+                <p>认证系统所需的库文件加载失败，请检查网络连接或联系管理员。</p>
+                <button class="btn btn-primary" onclick="location.reload()">
+                    <i class="fas fa-refresh me-2"></i>重新加载页面
+                </button>
+            </div>
+        `;
+    }
+}
 
 /**
  * 初始化认证系统
@@ -121,8 +185,20 @@ function updateStepIndicator(currentStep) {
  */
 function generateSecret() {
     try {
+        console.log('🔑 开始生成密钥...');
+
+        // 检查必要的库是否加载
+        if (typeof OTPAuth === 'undefined') {
+            throw new Error('OTPAuth库未加载');
+        }
+
+        if (typeof QRCode === 'undefined') {
+            console.warn('⚠️ QRCode库未加载，将使用备用方案');
+        }
+
         // 生成随机密钥
         currentSecret = generateRandomSecret();
+        console.log('✅ 密钥生成成功:', currentSecret);
 
         // 保存到全局变量供其他函数使用
         window.currentSecret = currentSecret;
@@ -136,6 +212,8 @@ function generateSecret() {
             period: AUTH_CONFIG.period,
             secret: OTPAuth.Secret.fromBase32(currentSecret)
         });
+
+        console.log('✅ TOTP对象创建成功');
         
         // 显示密钥
         document.getElementById('secretKey').textContent = currentSecret;
@@ -230,10 +308,55 @@ function generateSecret() {
             }
         }, 100);
 
-        
+
     } catch (error) {
-        console.error('密钥生成失败:', error);
-        showToast('密钥生成失败', 'error');
+        console.error('❌ 密钥生成失败:', error);
+
+        // 显示详细错误信息
+        let errorMessage = '密钥生成失败';
+        if (error.message.includes('OTPAuth')) {
+            errorMessage = '认证库加载失败，请刷新页面重试';
+        } else if (error.message.includes('QRCode')) {
+            errorMessage = '二维码生成失败，但可以手动输入密钥';
+        }
+
+        showToast(errorMessage, 'error');
+
+        // 显示备用界面
+        showFallbackSetup();
+    }
+}
+
+/**
+ * 显示备用设置界面
+ */
+function showFallbackSetup() {
+    try {
+        // 尝试生成一个简单的密钥
+        const fallbackSecret = generateRandomSecret();
+
+        // 显示密钥
+        document.getElementById('secretKey').textContent = fallbackSecret;
+
+        // 显示备用二维码信息
+        const qrcodeContainer = document.getElementById('qrcode');
+        qrcodeContainer.innerHTML = `
+            <div style="padding: 20px; border: 2px dashed #e5e7eb; border-radius: 8px; text-align: center;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #f59e0b; margin-bottom: 15px;"></i>
+                <h6 style="color: #374151; margin-bottom: 10px;">二维码生成失败</h6>
+                <p style="color: #6b7280; font-size: 14px; margin: 0;">请手动在Google Authenticator中添加账户</p>
+            </div>
+        `;
+
+        // 保存密钥到全局变量
+        currentSecret = fallbackSecret;
+        window.currentSecret = fallbackSecret;
+
+        console.log('✅ 备用设置界面已显示');
+
+    } catch (error) {
+        console.error('❌ 备用设置也失败:', error);
+        showToast('系统错误，请联系管理员', 'error');
     }
 }
 
@@ -308,7 +431,7 @@ function verifyTOTP(token, secret = null) {
             algorithm: AUTH_CONFIG.algorithm,
             digits: AUTH_CONFIG.digits,
             period: AUTH_CONFIG.period,
-            secret: secretToUse
+            secret: OTPAuth.Secret.fromBase32(secretToUse)
         });
         
         // 验证当前时间窗口和前后一个时间窗口
