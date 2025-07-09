@@ -10,13 +10,7 @@
 // AU-OPS API配置
 const AU_OPS_CONFIG = {
     baseUrl: 'https://prod.au-ops.com/edi/web-services',
-    timeout: 30000,
-    
-    // API凭据（在Workers环境变量中配置）
-    credentials: {
-        appKey: 'kBYt^jva4shvx#xJ8yVlg7iJJW6_xHFL',
-        appToken: 'ImB4ir2Z9tezm3b^FX3eYhJay@WwA5jJB7cgrwqRTV7^@ziL#FaacJaOgCes#r9bjc4JNO6B76BQPtspjF@HA6X@gxmyLl6eeCkgsCZN#CQs#SLckea@VvrEp$vf@2dAsMjXmfDm8M05eEjVq5C~XGKN_yrd4L5hWP~8EBr0aqx~LPNDYaV5$9h8JkxZrG#k9wgEJosRpbMfNe619HuQreu5SfC@9UGVoi1_I08~tcvlt8OSb~3FrJ7m@x568M1'
-    }
+    timeout: 30000
 };
 
 // 允许的来源域名（CORS配置）
@@ -42,37 +36,38 @@ const SUPPORTED_ENDPOINTS = [
 /**
  * 处理所有请求
  * @param {Request} request - 请求对象
+ * @param {Object} env - 环境变量
  * @returns {Response} 响应对象
  */
-async function handleRequest(request) {
+async function handleRequest(request, env) {
     const url = new URL(request.url);
-    
+
     // 处理OPTIONS预检请求
     if (request.method === 'OPTIONS') {
         return handleCORS(request);
     }
-    
+
     // 只允许GET请求
     if (request.method !== 'GET') {
-        return createErrorResponse('只支持GET请求', 405);
+        return createErrorResponse('服务暂时不可用', 405);
     }
-    
+
     // 验证来源
     const origin = request.headers.get('Origin');
     if (!isOriginAllowed(origin)) {
-        return createErrorResponse('来源不被允许', 403);
+        return createErrorResponse('访问被拒绝', 403);
     }
-    
+
     // 解析API路径
     const apiPath = url.pathname.replace('/api/tracking', '');
-    
+
     // 路由到相应的处理函数
     if (apiPath.startsWith('/v5/tracking') || apiPath.startsWith('/v3/tracking')) {
-        return handleTrackingRequest(request, apiPath);
+        return handleTrackingRequest(request, apiPath, env);
     } else if (apiPath.startsWith('/fms/')) {
-        return handleFMSRequest(request, apiPath);
+        return handleFMSRequest(request, apiPath, env);
     } else {
-        return createErrorResponse('不支持的API端点', 404);
+        return createErrorResponse('服务暂时不可用', 404);
     }
 }
 
@@ -82,29 +77,38 @@ async function handleRequest(request) {
  * @param {string} apiPath - API路径
  * @returns {Response} 响应对象
  */
-async function handleTrackingRequest(request, apiPath) {
+async function handleTrackingRequest(request, apiPath, env) {
     try {
         const url = new URL(request.url);
         const trackingRef = url.searchParams.get('trackingRef');
-        
+
         if (!trackingRef) {
-            return createErrorResponse('缺少trackingRef参数', 400);
+            return createErrorResponse('查询参数无效', 400);
         }
-        
+
         // 验证trackingRef格式
         if (!isValidTrackingRef(trackingRef)) {
-            return createErrorResponse('trackingRef格式无效', 400);
+            return createErrorResponse('查询参数格式错误', 400);
         }
-        
+
+        // 从环境变量获取API密钥
+        const appKey = env.COMPANY1_APP_KEY || env.APP_KEY;
+        const appToken = env.COMPANY1_APP_TOKEN || env.APP_TOKEN;
+
+        if (!appKey || !appToken) {
+            console.error('API密钥未配置');
+            return createErrorResponse('服务配置错误', 500);
+        }
+
         // 构建AU-OPS API请求
         const auOpsUrl = `${AU_OPS_CONFIG.baseUrl}${apiPath}?trackingRef=${encodeURIComponent(trackingRef)}`;
-        
+
         const auOpsResponse = await fetch(auOpsUrl, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
-                'appKey': AU_OPS_CONFIG.credentials.appKey,
-                'appToken': AU_OPS_CONFIG.credentials.appToken
+                'appKey': appKey,
+                'appToken': appToken
             },
             signal: AbortSignal.timeout(AU_OPS_CONFIG.timeout)
         });
@@ -112,7 +116,7 @@ async function handleTrackingRequest(request, apiPath) {
         if (!auOpsResponse.ok) {
             const errorText = await auOpsResponse.text();
             console.error(`AU-OPS API错误 (${auOpsResponse.status}):`, errorText);
-            return createErrorResponse(`API调用失败: ${auOpsResponse.statusText}`, auOpsResponse.status);
+            return createErrorResponse('查询失败，请稍后重试', auOpsResponse.status);
         }
         
         const data = await auOpsResponse.json();
@@ -134,12 +138,12 @@ async function handleTrackingRequest(request, apiPath) {
         
     } catch (error) {
         console.error('轨迹查询处理错误:', error);
-        
+
         if (error.name === 'TimeoutError') {
-            return createErrorResponse('请求超时', 408);
+            return createErrorResponse('查询超时，请稍后重试', 408);
         }
-        
-        return createErrorResponse(`处理错误: ${error.message}`, 500);
+
+        return createErrorResponse('查询失败，请稍后重试', 500);
     }
 }
 
@@ -149,7 +153,7 @@ async function handleTrackingRequest(request, apiPath) {
  * @param {string} apiPath - API路径
  * @returns {Response} 响应对象
  */
-async function handleFMSRequest(request, apiPath) {
+async function handleFMSRequest(request, apiPath, env) {
     try {
         const url = new URL(request.url);
         let queryParams = '';
@@ -332,6 +336,8 @@ function createErrorResponse(message, status = 400) {
 // Workers事件监听器
 // ===================================
 
-addEventListener('fetch', event => {
-    event.respondWith(handleRequest(event.request));
-});
+export default {
+    async fetch(request, env, ctx) {
+        return handleRequest(request, env);
+    }
+};

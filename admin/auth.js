@@ -130,11 +130,11 @@ function generateSecret() {
         // 创建TOTP对象
         totp = new OTPAuth.TOTP({
             issuer: AUTH_CONFIG.issuer,
-            label: AUTH_CONFIG.label,
+            label: `${AUTH_CONFIG.issuer}:${AUTH_CONFIG.label}`,
             algorithm: AUTH_CONFIG.algorithm,
             digits: AUTH_CONFIG.digits,
             period: AUTH_CONFIG.period,
-            secret: currentSecret
+            secret: OTPAuth.Secret.fromBase32(currentSecret)
         });
         
         // 显示密钥
@@ -143,6 +143,13 @@ function generateSecret() {
         // 生成二维码
         const otpAuthUrl = totp.toString();
         console.log('生成的OTP URL:', otpAuthUrl);
+
+        // 验证URL格式
+        if (!otpAuthUrl.startsWith('otpauth://totp/')) {
+            console.error('OTP URL格式错误:', otpAuthUrl);
+            showFallbackQRCode(otpAuthUrl);
+            return;
+        }
 
         // 显示加载状态
         const qrcodeContainer = document.getElementById('qrcode');
@@ -155,26 +162,74 @@ function generateSecret() {
             </div>
         `;
 
-        try {
-            QRCode.toCanvas(qrcodeContainer, otpAuthUrl, {
-                width: 200,
-                margin: 2,
-                color: {
-                    dark: '#2563eb',
-                    light: '#ffffff'
+        // 等待一下确保DOM准备好
+        setTimeout(() => {
+            try {
+                // 检查QRCode库是否可用
+                if (typeof QRCode === 'undefined') {
+                    console.error('QRCode库未加载');
+                    showFallbackQRCode(otpAuthUrl);
+                    return;
                 }
-            }, function(error) {
-                if (error) {
-                    console.error('二维码生成失败:', error);
-                    showToast('二维码生成失败，已切换到手动模式', 'warning');
-                } else {
-                    console.log('✅ 二维码生成成功');
+
+                // 清空容器并创建canvas
+                qrcodeContainer.innerHTML = '';
+
+                // 尝试多种QR码生成方式
+                try {
+                    // 方法1: 使用toCanvas
+                    QRCode.toCanvas(qrcodeContainer, otpAuthUrl, {
+                        width: 200,
+                        height: 200,
+                        margin: 2,
+                        color: {
+                            dark: '#2563eb',
+                            light: '#ffffff'
+                        },
+                        errorCorrectionLevel: 'M'
+                    }, function(error) {
+                        if (error) {
+                            console.error('Canvas方式失败，尝试DataURL方式:', error);
+                            // 方法2: 使用toDataURL
+                            QRCode.toDataURL(otpAuthUrl, {
+                                width: 200,
+                                margin: 2,
+                                color: {
+                                    dark: '#2563eb',
+                                    light: '#ffffff'
+                                },
+                                errorCorrectionLevel: 'M'
+                            }, function(err, url) {
+                                if (err) {
+                                    console.error('DataURL方式也失败:', err);
+                                    showFallbackQRCode(otpAuthUrl);
+                                } else {
+                                    qrcodeContainer.innerHTML = `
+                                        <img src="${url}" alt="QR Code" style="border: 1px solid #e5e7eb; border-radius: 0.5rem;">
+                                        <p style="margin: 10px 0 0 0; font-size: 14px; color: #6b7280; text-align: center;">使用Google Authenticator扫描</p>
+                                    `;
+                                    console.log('✅ 二维码生成成功 (DataURL方式)');
+                                }
+                            });
+                        } else {
+                            console.log('✅ 二维码生成成功 (Canvas方式)');
+                            // 添加说明文字
+                            const description = document.createElement('p');
+                            description.style.cssText = 'margin: 10px 0 0 0; font-size: 14px; color: #6b7280; text-align: center;';
+                            description.textContent = '使用Google Authenticator扫描';
+                            qrcodeContainer.appendChild(description);
+                        }
+                    });
+                } catch (canvasError) {
+                    console.error('Canvas创建失败，尝试其他方式:', canvasError);
+                    showFallbackQRCode(otpAuthUrl);
                 }
-            });
-        } catch (error) {
-            console.error('二维码库加载失败:', error);
-            showFallbackQRCode(otpAuthUrl);
-        }
+            } catch (error) {
+                console.error('二维码生成异常:', error);
+                showFallbackQRCode(otpAuthUrl);
+            }
+        }, 100);
+
         
     } catch (error) {
         console.error('密钥生成失败:', error);
@@ -183,15 +238,57 @@ function generateSecret() {
 }
 
 /**
- * 生成随机密钥
+ * 生成随机密钥 (Base32格式)
  */
 function generateRandomSecret() {
+    // Base32字符集 (RFC 4648)
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
     let secret = '';
+
+    // 生成160位(20字节)的密钥，转换为32个Base32字符
     for (let i = 0; i < 32; i++) {
         secret += chars.charAt(Math.floor(Math.random() * chars.length));
     }
+
+    console.log('生成的密钥:', secret);
     return secret;
+}
+
+/**
+ * 测试二维码生成 (调试用)
+ */
+function testQRGeneration() {
+    console.log('🧪 测试二维码生成...');
+
+    if (typeof QRCode === 'undefined') {
+        console.error('❌ QRCode库未加载');
+        return false;
+    }
+
+    if (typeof OTPAuth === 'undefined') {
+        console.error('❌ OTPAuth库未加载');
+        return false;
+    }
+
+    try {
+        const testSecret = 'JBSWY3DPEHPK3PXP';
+        const testTotp = new OTPAuth.TOTP({
+            issuer: 'Test',
+            label: 'Test:TestAccount',
+            algorithm: 'SHA1',
+            digits: 6,
+            period: 30,
+            secret: OTPAuth.Secret.fromBase32(testSecret)
+        });
+
+        const testUrl = testTotp.toString();
+        console.log('测试URL:', testUrl);
+
+        return testUrl.startsWith('otpauth://totp/');
+    } catch (error) {
+        console.error('❌ 测试失败:', error);
+        return false;
+    }
 }
 
 /**

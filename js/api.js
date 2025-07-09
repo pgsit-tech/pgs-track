@@ -241,7 +241,7 @@ async function queryTrackingInfo(trackingRef, companyId = 'default') {
     }
     
     // 所有API都失败
-    throw new Error(`轨迹查询失败: ${lastError.message}`);
+    throw new Error('查询失败，请检查单号格式或稍后重试');
 }
 
 /**
@@ -312,7 +312,7 @@ async function queryTrackingInfoFromAllCompanies(trackingRef) {
         };
     } else {
         console.log(`❌ 所有公司查询均失败`);
-        throw new Error(`所有公司API查询均失败 (${summary.failedCount}/${summary.totalCompanies})`);
+        throw new Error('查询失败，请检查单号格式或稍后重试');
     }
 }
 
@@ -351,7 +351,7 @@ async function queryBatchTrackingInfo(trackingRefs, progressCallback = null) {
                 index: i + 1,
                 trackingRef: trackingRef,
                 success: false,
-                error: error.message,
+                error: '查询失败，请检查单号格式',
                 timestamp: new Date().toISOString()
             });
         }

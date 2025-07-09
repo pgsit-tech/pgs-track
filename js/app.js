@@ -600,14 +600,20 @@ function showMultiSearchResults(data) {
  */
 function showErrorState(errorMsg) {
     hideAllSections();
-    
-    if (Elements.errorMessage) {
-        Elements.errorMessage.textContent = errorMsg;
+
+    // 统一错误信息，不暴露内部架构
+    let userFriendlyMsg = errorMsg;
+    if (errorMsg.includes('API') || errorMsg.includes('公司') || errorMsg.includes('代理') || errorMsg.includes('Workers')) {
+        userFriendlyMsg = '查询失败，请检查单号格式或稍后重试';
     }
-    
+
+    if (Elements.errorMessage) {
+        Elements.errorMessage.textContent = userFriendlyMsg;
+    }
+
     Elements.errorSection.classList.remove('d-none');
     Elements.errorSection.classList.add('fade-in');
-    
+
     // 恢复搜索按钮
     resetSearchButton();
 }
