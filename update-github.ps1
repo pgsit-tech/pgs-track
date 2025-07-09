@@ -74,16 +74,40 @@ try {
 
 Write-Host ""
 
-# 5. 推送到GitHub
+# 5. 推送到GitHub（带重试机制）
 Write-Host "5. 推送到GitHub..." -ForegroundColor Yellow
 Write-Host "   🔐 如果需要认证，请输入GitHub凭据" -ForegroundColor Cyan
-try {
-    git push origin main
-    Write-Host "   ✅ 推送到GitHub成功！" -ForegroundColor Green
-} catch {
-    Write-Host "   ❌ 推送失败: $($_.Exception.Message)" -ForegroundColor Red
-    Write-Host "   💡 可能需要Personal Access Token或检查网络连接" -ForegroundColor Yellow
-    Read-Host "按Enter键继续..."
+
+$maxRetries = 3
+$retryCount = 0
+$pushSuccess = $false
+
+while ($retryCount -lt $maxRetries -and -not $pushSuccess) {
+    $retryCount++
+
+    if ($retryCount -gt 1) {
+        Write-Host "   🔄 第 $retryCount 次尝试推送..." -ForegroundColor Cyan
+        Start-Sleep -Seconds 2
+    }
+
+    try {
+        git push origin main
+        Write-Host "   ✅ 推送到GitHub成功！" -ForegroundColor Green
+        $pushSuccess = $true
+    } catch {
+        Write-Host "   ❌ 推送失败 (尝试 $retryCount/$maxRetries): $($_.Exception.Message)" -ForegroundColor Red
+
+        if ($retryCount -lt $maxRetries) {
+            Write-Host "   ⏳ 等待 3 秒后重试..." -ForegroundColor Yellow
+            Start-Sleep -Seconds 3
+        } else {
+            Write-Host "   💡 所有重试都失败了，可能需要:" -ForegroundColor Yellow
+            Write-Host "      - 检查网络连接" -ForegroundColor White
+            Write-Host "      - 验证GitHub Personal Access Token" -ForegroundColor White
+            Write-Host "      - 确认仓库权限" -ForegroundColor White
+            Read-Host "按Enter键继续..."
+        }
+    }
 }
 
 Write-Host ""
