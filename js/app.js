@@ -416,7 +416,7 @@ async function performSingleSearch(trackingNumber, trackingType) {
 
         // 格式化结果数据
         const formattedData = TrackingAPI.formatTrackingData(
-            result.primaryResult.data,
+            result.primaryResult.data.data,  // 提取嵌套的data字段
             result.primaryResult.apiVersion
         );
 
@@ -692,7 +692,7 @@ function renderMultiResults(data) {
         if (result.success && result.primaryResult) {
             // 成功的结果
             const formattedData = TrackingAPI.formatTrackingData(
-                result.primaryResult.data,
+                result.primaryResult.data.data,  // 提取嵌套的data字段
                 result.primaryResult.apiVersion
             );
 
