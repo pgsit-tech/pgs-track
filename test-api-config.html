@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API配置测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; border: 1px solid #bee5eb; }
+    </style>
+</head>
+<body>
+    <h1>🔧 API配置测试</h1>
+    
+    <div id="results"></div>
+    
+    <button onclick="testApiConfig()">测试API配置</button>
+    <button onclick="testApiCall()">测试API调用</button>
+    
+    <script src="js/api.js"></script>
+    <script>
+        function addResult(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = message;
+            results.appendChild(div);
+        }
+        
+        function testApiConfig() {
+            document.getElementById('results').innerHTML = '';
+            
+            // 测试当前环境
+            const hostname = window.location.hostname;
+            addResult(`🌐 当前域名: ${hostname}`, 'info');
+            
+            // 测试API配置
+            if (typeof API_CONFIG !== 'undefined') {
+                addResult(`✅ API_CONFIG已加载`, 'success');
+                addResult(`📍 API基础URL: ${API_CONFIG.baseUrl}`, 'info');
+                
+                // 检查是否使用了自定义域名
+                if (API_CONFIG.baseUrl.includes('track-api.20990909.xyz')) {
+                    addResult(`✅ 正在使用自定义域名`, 'success');
+                } else if (API_CONFIG.baseUrl.includes('workers.dev')) {
+                    addResult(`⚠️ 仍在使用workers.dev域名`, 'error');
+                } else {
+                    addResult(`ℹ️ 使用其他API地址`, 'info');
+                }
+            } else {
+                addResult(`❌ API_CONFIG未加载`, 'error');
+            }
+            
+            // 测试环境变量
+            if (typeof window.WORKERS_PROXY_URL !== 'undefined') {
+                addResult(`🔧 环境变量WORKERS_PROXY_URL: ${window.WORKERS_PROXY_URL}`, 'info');
+            }
+        }
+        
+        async function testApiCall() {
+            if (typeof API_CONFIG === 'undefined') {
+                addResult(`❌ API_CONFIG未加载，无法测试`, 'error');
+                return;
+            }
+            
+            const testUrl = `${API_CONFIG.baseUrl}/v5/tracking?trackingRef=TEST`;
+            addResult(`🧪 测试URL: ${testUrl}`, 'info');
+            
+            try {
+                const response = await fetch(testUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                addResult(`📡 响应状态: ${response.status} ${response.statusText}`, 
+                    response.status === 403 ? 'success' : 'info');
+                
+                if (response.status === 403) {
+                    addResult(`✅ 403错误是预期的(CORS限制)，说明API地址可访问`, 'success');
+                }
+                
+                const data = await response.json();
+                addResult(`📄 响应内容: ${JSON.stringify(data, null, 2)}`, 'info');
+                
+            } catch (error) {
+                addResult(`❌ 请求失败: ${error.message}`, 'error');
+                
+                if (error.message.includes('CORS')) {
+                    addResult(`ℹ️ CORS错误可能表示域名配置问题`, 'info');
+                } else if (error.message.includes('Failed to fetch')) {
+                    addResult(`ℹ️ 网络错误可能表示域名无法访问`, 'info');
+                }
+            }
+        }
+        
+        // 页面加载时自动测试
+        window.addEventListener('load', testApiConfig);
+    </script>
+</body>
+</html>
