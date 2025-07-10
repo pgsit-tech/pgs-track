@@ -46,9 +46,25 @@ function checkLibrariesAndInit() {
     const missingLibraries = [];
 
     if (typeof otplib === 'undefined') {
-        allLibrariesLoaded = false;
-        missingLibraries.push('otplib');
-        console.error('❌ otplib库未加载');
+        console.warn('⚠️ otplib库未加载，将尝试加载备用库...');
+
+        // 尝试动态加载备用库
+        const script = document.createElement('script');
+        script.src = '../js/otpauth.min.js';
+        script.onload = function() {
+            console.log('✅ 备用TOTP库加载成功');
+            // 重新初始化
+            setTimeout(() => {
+                checkLibrariesAndInit();
+            }, 100);
+        };
+        script.onerror = function() {
+            allLibrariesLoaded = false;
+            missingLibraries.push('TOTP库');
+            console.error('❌ 所有TOTP库都加载失败');
+        };
+        document.head.appendChild(script);
+        return; // 等待备用库加载
     } else {
         console.log('✅ otplib库已加载');
 
