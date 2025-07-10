@@ -459,7 +459,22 @@ async function verifyTOTP(token, secret = null) {
         }
 
         console.log('❌ 验证失败，所有时间窗口都不匹配');
-        
+
+        // 测试：生成当前时间的验证码并立即验证
+        console.log('🧪 测试：生成当前时间验证码');
+        try {
+            const testTimestamp = Date.now();
+            const testCode = await totpInstance.generate({ timestamp: testTimestamp });
+            console.log('🧪 测试生成的验证码:', testCode, '时间:', new Date(testTimestamp).toISOString());
+
+            if (token === testCode) {
+                console.log('✅ 测试验证成功！');
+                return true;
+            }
+        } catch (error) {
+            console.log('🧪 测试生成失败:', error);
+        }
+
         return false;
         
     } catch (error) {
@@ -655,6 +670,53 @@ function copySecret() {
         }).catch(() => {
             showToast('复制失败，请手动复制', 'warning');
         });
+    }
+}
+
+/**
+ * 生成当前时间的验证码（测试用）
+ */
+async function generateCurrentCode() {
+    if (!currentSecret) {
+        showToast('请先生成密钥', 'error');
+        return;
+    }
+
+    try {
+        const totpInstance = new OTPAuth.TOTP({
+            issuer: AUTH_CONFIG.issuer,
+            label: AUTH_CONFIG.label,
+            algorithm: AUTH_CONFIG.algorithm,
+            digits: AUTH_CONFIG.digits,
+            period: AUTH_CONFIG.period,
+            secret: OTPAuth.Secret.fromBase32(currentSecret)
+        });
+
+        const currentTime = Date.now();
+        let currentCode;
+
+        try {
+            currentCode = await totpInstance.generate({ timestamp: currentTime });
+        } catch (error) {
+            console.warn('异步生成失败，使用同步方法:', error);
+            currentCode = totpInstance.generateSync({ timestamp: currentTime });
+        }
+
+        console.log('🧪 当前时间:', new Date(currentTime).toISOString());
+        console.log('🧪 当前验证码:', currentCode);
+
+        // 自动填入验证码
+        const codeInput = document.getElementById('verifyCode');
+        if (codeInput) {
+            codeInput.value = currentCode;
+            codeInput.focus();
+        }
+
+        showToast(`当前验证码: ${currentCode}`, 'info');
+
+    } catch (error) {
+        console.error('生成验证码失败:', error);
+        showToast('生成验证码失败', 'error');
     }
 }
 
