@@ -408,7 +408,7 @@ function testQRGeneration() {
 /**
  * 验证TOTP代码
  */
-function verifyTOTP(token, secret = null) {
+async function verifyTOTP(token, secret = null) {
     try {
         const secretToUse = secret || currentSecret;
         
@@ -441,8 +441,14 @@ function verifyTOTP(token, secret = null) {
             const timestampSec = currentTimeSec + (i * windowSec);
             const timestampMs = timestampSec * 1000; // 转换回毫秒用于显示
 
-            // 使用毫秒时间戳调用OTPAuth（内部会自动转换为秒）
-            const expectedToken = totpInstance.generate({ timestamp: timestampMs });
+            // 使用异步方法生成验证码
+            let expectedToken;
+            try {
+                expectedToken = await totpInstance.generate({ timestamp: timestampMs });
+            } catch (error) {
+                console.warn('异步生成失败，使用同步方法:', error);
+                expectedToken = totpInstance.generateSync({ timestamp: timestampMs });
+            }
 
             console.log(`时间窗口 ${i}: 时间戳(秒)=${timestampSec}, 时间戳(毫秒)=${timestampMs}, 时间=${new Date(timestampMs).toISOString()}, 期望验证码=${expectedToken}`);
 
@@ -480,32 +486,32 @@ document.getElementById('verifyForm').addEventListener('submit', function(e) {
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>验证中...';
     
-    setTimeout(() => {
-        if (verifyTOTP(code)) {
+    setTimeout(async () => {
+        if (await verifyTOTP(code)) {
             // 验证成功，保存密钥
             localStorage.setItem('au_ops_auth_secret', currentSecret);
             sessionStorage.setItem('au_ops_authenticated', 'true');
-            
+
             showToast('认证设置成功！', 'success');
-            
+
             // 更新步骤指示器
             updateStepIndicator(3);
-            
+
             // 延迟跳转
             setTimeout(() => {
                 redirectToAdmin();
             }, 1500);
-            
+
         } else {
             showToast('验证码错误，请重试', 'error');
             document.getElementById('verifyCode').value = '';
             document.getElementById('verifyCode').focus();
         }
-        
+
         // 恢复按钮状态
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-check me-2"></i>验证并进入后台';
-        
+
     }, 1000);
 });
 
@@ -534,27 +540,27 @@ document.getElementById('loginForm').addEventListener('submit', function(e) {
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>验证中...';
     
-    setTimeout(() => {
-        if (verifyTOTP(code, savedSecret)) {
+    setTimeout(async () => {
+        if (await verifyTOTP(code, savedSecret)) {
             // 验证成功
             sessionStorage.setItem('au_ops_authenticated', 'true');
             showToast('登录成功！', 'success');
-            
+
             // 延迟跳转
             setTimeout(() => {
                 redirectToAdmin();
             }, 1000);
-            
+
         } else {
             showToast('验证码错误，请重试', 'error');
             document.getElementById('loginCode').value = '';
             document.getElementById('loginCode').focus();
         }
-        
+
         // 恢复按钮状态
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>登录后台';
-        
+
     }, 1000);
 });
 
