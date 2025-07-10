@@ -404,6 +404,89 @@ function testQRGeneration() {
 }
 
 /**
+ * 标准Base32解码
+ */
+function base32Decode(encoded) {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    let bits = '';
+
+    // 移除填充和空格，转大写
+    encoded = encoded.replace(/[=\s]/g, '').toUpperCase();
+
+    for (let i = 0; i < encoded.length; i++) {
+        const val = alphabet.indexOf(encoded.charAt(i));
+        if (val === -1) throw new Error('Invalid base32 character: ' + encoded.charAt(i));
+        bits += val.toString(2).padStart(5, '0');
+    }
+
+    const bytes = [];
+    for (let i = 0; i < bits.length; i += 8) {
+        if (i + 8 <= bits.length) {
+            bytes.push(parseInt(bits.substring(i, i + 8), 2));
+        }
+    }
+    return new Uint8Array(bytes);
+}
+
+/**
+ * 标准TOTP生成算法
+ */
+async function generateStandardTOTP(secret, timestamp) {
+    try {
+        const key = base32Decode(secret);
+        const timeStep = Math.floor(timestamp / 1000 / AUTH_CONFIG.period);
+
+        console.log('🔧 标准TOTP生成:');
+        console.log('时间戳(毫秒):', timestamp);
+        console.log('时间戳(秒):', Math.floor(timestamp / 1000));
+        console.log('时间步长:', timeStep);
+        console.log('密钥(hex):', Array.from(key).map(b => b.toString(16).padStart(2, '0')).join(''));
+
+        // 创建8字节时间数据
+        const data = new ArrayBuffer(8);
+        const view = new DataView(data);
+        view.setUint32(0, Math.floor(timeStep / 0x100000000), false); // 大端序
+        view.setUint32(4, timeStep & 0xffffffff, false);
+
+        console.log('时间字节(hex):', Array.from(new Uint8Array(data)).map(b => b.toString(16).padStart(2, '0')).join(''));
+
+        // 使用Web Crypto API计算HMAC-SHA1
+        const cryptoKey = await crypto.subtle.importKey(
+            'raw',
+            key,
+            { name: 'HMAC', hash: 'SHA-1' },
+            false,
+            ['sign']
+        );
+
+        const signature = await crypto.subtle.sign('HMAC', cryptoKey, data);
+        const hash = new Uint8Array(signature);
+
+        console.log('HMAC结果(hex):', Array.from(hash).map(b => b.toString(16).padStart(2, '0')).join(''));
+
+        // 动态截取
+        const offset = hash[hash.length - 1] & 0xf;
+        console.log('偏移量:', offset);
+
+        const code = ((hash[offset] & 0x7f) << 24) |
+                     ((hash[offset + 1] & 0xff) << 16) |
+                     ((hash[offset + 2] & 0xff) << 8) |
+                     (hash[offset + 3] & 0xff);
+
+        console.log('原始代码:', code);
+
+        const otp = (code % Math.pow(10, AUTH_CONFIG.digits)).toString().padStart(AUTH_CONFIG.digits, '0');
+        console.log('最终验证码:', otp);
+        console.log('---');
+
+        return otp;
+    } catch (error) {
+        console.error('标准TOTP生成失败:', error);
+        throw error;
+    }
+}
+
+/**
  * 验证TOTP代码
  */
 async function verifyTOTP(token, secret = null) {
@@ -419,31 +502,13 @@ async function verifyTOTP(token, secret = null) {
         console.log('输入验证码:', token);
         console.log('当前时间:', new Date().toISOString());
 
-        // 创建TOTP实例
-        const totpInstance = new OTPAuth.TOTP({
-            issuer: AUTH_CONFIG.issuer,
-            label: AUTH_CONFIG.label,
-            algorithm: AUTH_CONFIG.algorithm,
-            digits: AUTH_CONFIG.digits,
-            period: AUTH_CONFIG.period,
-            secret: OTPAuth.Secret.fromBase32(secretToUse)
-        });
-
-        // 验证多个时间窗口（±2个窗口，共5个窗口）
+        // 使用标准TOTP算法实现
         const currentTimeMs = Date.now();
-        const currentTimeSec = Math.floor(currentTimeMs / 1000);
         const windowSec = AUTH_CONFIG.period;
 
         for (let i = -2; i <= 2; i++) {
-            const timestampSec = currentTimeSec + (i * windowSec);
-            const timestampMs = timestampSec * 1000;
-
-            let expectedToken;
-            try {
-                expectedToken = await totpInstance.generate({ timestamp: timestampMs });
-            } catch (error) {
-                expectedToken = totpInstance.generateSync({ timestamp: timestampMs });
-            }
+            const timestampMs = currentTimeMs + (i * windowSec * 1000);
+            const expectedToken = generateStandardTOTP(secretToUse, timestampMs);
 
             console.log(`时间窗口 ${i}: 期望验证码=${expectedToken}, 测试时间=${new Date(timestampMs).toISOString()}`);
 
@@ -664,23 +729,8 @@ async function generateCurrentCode() {
     try {
         const currentTime = Date.now();
 
-        // 创建TOTP实例
-        const totpInstance = new OTPAuth.TOTP({
-            issuer: AUTH_CONFIG.issuer,
-            label: AUTH_CONFIG.label,
-            algorithm: AUTH_CONFIG.algorithm,
-            digits: AUTH_CONFIG.digits,
-            period: AUTH_CONFIG.period,
-            secret: OTPAuth.Secret.fromBase32(currentSecret)
-        });
-
-        // 生成当前验证码
-        let currentCode;
-        try {
-            currentCode = await totpInstance.generate({ timestamp: currentTime });
-        } catch (error) {
-            currentCode = totpInstance.generateSync({ timestamp: currentTime });
-        }
+        // 使用标准TOTP算法生成验证码
+        const currentCode = await generateStandardTOTP(currentSecret, currentTime);
 
         console.log('🧪 当前时间:', new Date(currentTime).toISOString());
         console.log('🧪 当前验证码:', currentCode);
