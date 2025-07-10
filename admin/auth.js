@@ -45,48 +45,17 @@ function checkLibrariesAndInit() {
     let allLibrariesLoaded = true;
     const missingLibraries = [];
 
-    if (typeof otplib === 'undefined') {
-        // 检查是否已经尝试过加载备用库
-        if (!window.fallbackLibraryAttempted) {
-            console.warn('⚠️ otplib库未加载，将尝试加载备用库...');
-            window.fallbackLibraryAttempted = true;
-
-            // 尝试动态加载备用库
-            const script = document.createElement('script');
-            script.src = '../js/otpauth.min.js';
-            script.onload = function() {
-                console.log('✅ 备用TOTP库加载成功');
-                // 重新初始化
-                setTimeout(() => {
-                    checkLibrariesAndInit();
-                }, 100);
-            };
-            script.onerror = function() {
-                allLibrariesLoaded = false;
-                missingLibraries.push('TOTP库');
-                console.error('❌ 所有TOTP库都加载失败');
-                showLibraryErrorView(missingLibraries);
-            };
-            document.head.appendChild(script);
-            return; // 等待备用库加载
-        } else {
-            // 检查备用库是否加载成功
-            if (typeof OTPAuth === 'undefined') {
-                allLibrariesLoaded = false;
-                missingLibraries.push('TOTP库');
-                console.error('❌ 所有TOTP库都加载失败');
-            } else {
-                console.log('✅ 备用TOTP库已加载');
-                window.useOTPAuth = true; // 标记使用备用库
-            }
-        }
+    if (typeof OTPAuth === 'undefined') {
+        allLibrariesLoaded = false;
+        missingLibraries.push('OTPAuth');
+        console.error('❌ OTPAuth库未加载');
     } else {
-        console.log('✅ otplib库已加载');
+        console.log('✅ OTPAuth库已加载');
 
-        if (typeof otplib.authenticator === 'undefined') {
-            console.error('❌ otplib.authenticator未定义');
+        if (typeof OTPAuth.Secret === 'undefined') {
+            console.error('❌ OTPAuth.Secret未定义');
         } else {
-            console.log('✅ otplib.authenticator已定义');
+            console.log('✅ OTPAuth.Secret已定义');
         }
     }
 
@@ -230,24 +199,17 @@ function generateSecret() {
         console.log('🔑 开始生成密钥...');
 
         // 检查必要的库是否加载
-        if (typeof otplib === 'undefined' && typeof OTPAuth === 'undefined') {
-            throw new Error('TOTP库未加载');
+        if (typeof OTPAuth === 'undefined') {
+            throw new Error('OTPAuth库未加载');
         }
 
         if (typeof QRCode === 'undefined') {
             console.warn('⚠️ QRCode库未加载，将使用备用方案');
         }
 
-        // 根据可用库生成密钥
-        if (typeof otplib !== 'undefined') {
-            // 使用otplib生成随机密钥
-            currentSecret = otplib.authenticator.generateSecret();
-            console.log('✅ 使用otplib生成密钥:', currentSecret);
-        } else if (typeof OTPAuth !== 'undefined') {
-            // 使用备用库生成密钥
-            currentSecret = generateRandomSecret();
-            console.log('✅ 使用备用库生成密钥:', currentSecret);
-        }
+        // 生成随机密钥
+        currentSecret = generateRandomSecret();
+        console.log('✅ 密钥生成成功:', currentSecret);
 
         // 保存到全局变量供其他函数使用
         window.currentSecret = currentSecret;
@@ -255,32 +217,22 @@ function generateSecret() {
         // 显示密钥
         document.getElementById('secretKey').textContent = currentSecret;
         
-        // 根据可用库生成二维码URL
-        let otpAuthUrl;
-        if (typeof otplib !== 'undefined') {
-            // 使用otplib生成二维码URL
-            otpAuthUrl = otplib.authenticator.keyuri(
-                AUTH_CONFIG.label,
-                AUTH_CONFIG.issuer,
-                currentSecret
-            );
-            console.log('使用otplib生成的OTP URL:', otpAuthUrl);
-        } else if (typeof OTPAuth !== 'undefined') {
-            // 使用备用库生成二维码URL
-            const totp = new OTPAuth.TOTP({
-                issuer: AUTH_CONFIG.issuer,
-                label: `${AUTH_CONFIG.issuer}:${AUTH_CONFIG.label}`,
-                algorithm: AUTH_CONFIG.algorithm,
-                digits: AUTH_CONFIG.digits,
-                period: AUTH_CONFIG.period,
-                secret: OTPAuth.Secret.fromBase32(currentSecret)
-            });
-            otpAuthUrl = totp.toString();
-            console.log('使用备用库生成的OTP URL:', otpAuthUrl);
-        }
+        // 创建TOTP对象
+        const totp = new OTPAuth.TOTP({
+            issuer: AUTH_CONFIG.issuer,
+            label: `${AUTH_CONFIG.issuer}:${AUTH_CONFIG.label}`,
+            algorithm: AUTH_CONFIG.algorithm,
+            digits: AUTH_CONFIG.digits,
+            period: AUTH_CONFIG.period,
+            secret: OTPAuth.Secret.fromBase32(currentSecret)
+        });
+
+        // 生成二维码URL
+        const otpAuthUrl = totp.toString();
+        console.log('生成的OTP URL:', otpAuthUrl);
 
         // 验证URL格式
-        if (!otpAuthUrl || !otpAuthUrl.startsWith('otpauth://totp/')) {
+        if (!otpAuthUrl.startsWith('otpauth://totp/')) {
             console.error('OTP URL格式错误:', otpAuthUrl);
             showFallbackQRCode(otpAuthUrl);
             return;
@@ -467,66 +419,37 @@ async function verifyTOTP(token, secret = null) {
         console.log('输入验证码:', token);
         console.log('当前时间:', new Date().toISOString());
 
-        // 根据可用库进行验证
-        if (typeof otplib !== 'undefined') {
-            // 使用otplib进行验证
-            const isValid = otplib.authenticator.check(token, secretToUse);
+        // 创建TOTP实例
+        const totpInstance = new OTPAuth.TOTP({
+            issuer: AUTH_CONFIG.issuer,
+            label: AUTH_CONFIG.label,
+            algorithm: AUTH_CONFIG.algorithm,
+            digits: AUTH_CONFIG.digits,
+            period: AUTH_CONFIG.period,
+            secret: OTPAuth.Secret.fromBase32(secretToUse)
+        });
 
-            if (isValid) {
-                console.log('✅ otplib验证成功！');
+        // 验证多个时间窗口（±2个窗口，共5个窗口）
+        const currentTimeMs = Date.now();
+        const currentTimeSec = Math.floor(currentTimeMs / 1000);
+        const windowSec = AUTH_CONFIG.period;
+
+        for (let i = -2; i <= 2; i++) {
+            const timestampSec = currentTimeSec + (i * windowSec);
+            const timestampMs = timestampSec * 1000;
+
+            let expectedToken;
+            try {
+                expectedToken = await totpInstance.generate({ timestamp: timestampMs });
+            } catch (error) {
+                expectedToken = totpInstance.generateSync({ timestamp: timestampMs });
+            }
+
+            console.log(`时间窗口 ${i}: 期望验证码=${expectedToken}, 测试时间=${new Date(timestampMs).toISOString()}`);
+
+            if (token === expectedToken) {
+                console.log('✅ 验证成功！匹配的时间窗口:', i);
                 return true;
-            }
-
-            console.log('🔍 otplib标准验证失败，尝试扩展时间窗口验证...');
-
-            // 手动验证多个时间窗口
-            const currentTime = Math.floor(Date.now() / 1000);
-            const window = 30;
-
-            for (let i = -2; i <= 2; i++) {
-                const testTime = currentTime + (i * window);
-                const expectedToken = otplib.authenticator.generate(secretToUse);
-
-                console.log(`时间窗口 ${i}: 期望验证码=${expectedToken}, 测试时间=${new Date(testTime * 1000).toISOString()}`);
-
-                if (token === expectedToken) {
-                    console.log('✅ otplib扩展验证成功！匹配的时间窗口:', i);
-                    return true;
-                }
-            }
-        } else if (typeof OTPAuth !== 'undefined') {
-            // 使用备用库进行验证
-            const totpInstance = new OTPAuth.TOTP({
-                issuer: AUTH_CONFIG.issuer,
-                label: AUTH_CONFIG.label,
-                algorithm: AUTH_CONFIG.algorithm,
-                digits: AUTH_CONFIG.digits,
-                period: AUTH_CONFIG.period,
-                secret: OTPAuth.Secret.fromBase32(secretToUse)
-            });
-
-            // 验证多个时间窗口
-            const currentTimeMs = Date.now();
-            const currentTimeSec = Math.floor(currentTimeMs / 1000);
-            const windowSec = AUTH_CONFIG.period;
-
-            for (let i = -2; i <= 2; i++) {
-                const timestampSec = currentTimeSec + (i * windowSec);
-                const timestampMs = timestampSec * 1000;
-
-                let expectedToken;
-                try {
-                    expectedToken = await totpInstance.generate({ timestamp: timestampMs });
-                } catch (error) {
-                    expectedToken = totpInstance.generateSync({ timestamp: timestampMs });
-                }
-
-                console.log(`时间窗口 ${i}: 期望验证码=${expectedToken}, 测试时间=${new Date(timestampMs).toISOString()}`);
-
-                if (token === expectedToken) {
-                    console.log('✅ 备用库验证成功！匹配的时间窗口:', i);
-                    return true;
-                }
             }
         }
 
@@ -739,31 +662,24 @@ async function generateCurrentCode() {
     }
 
     try {
-        let currentCode;
         const currentTime = Date.now();
 
-        // 根据可用库生成验证码
-        if (typeof otplib !== 'undefined') {
-            // 使用otplib生成当前验证码
-            currentCode = otplib.authenticator.generate(currentSecret);
-            console.log('🧪 使用otplib生成验证码');
-        } else if (typeof OTPAuth !== 'undefined') {
-            // 使用备用库生成验证码
-            const totpInstance = new OTPAuth.TOTP({
-                issuer: AUTH_CONFIG.issuer,
-                label: AUTH_CONFIG.label,
-                algorithm: AUTH_CONFIG.algorithm,
-                digits: AUTH_CONFIG.digits,
-                period: AUTH_CONFIG.period,
-                secret: OTPAuth.Secret.fromBase32(currentSecret)
-            });
+        // 创建TOTP实例
+        const totpInstance = new OTPAuth.TOTP({
+            issuer: AUTH_CONFIG.issuer,
+            label: AUTH_CONFIG.label,
+            algorithm: AUTH_CONFIG.algorithm,
+            digits: AUTH_CONFIG.digits,
+            period: AUTH_CONFIG.period,
+            secret: OTPAuth.Secret.fromBase32(currentSecret)
+        });
 
-            try {
-                currentCode = await totpInstance.generate({ timestamp: currentTime });
-            } catch (error) {
-                currentCode = totpInstance.generateSync({ timestamp: currentTime });
-            }
-            console.log('🧪 使用备用库生成验证码');
+        // 生成当前验证码
+        let currentCode;
+        try {
+            currentCode = await totpInstance.generate({ timestamp: currentTime });
+        } catch (error) {
+            currentCode = totpInstance.generateSync({ timestamp: currentTime });
         }
 
         console.log('🧪 当前时间:', new Date(currentTime).toISOString());
