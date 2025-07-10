@@ -180,9 +180,9 @@ async function queryTrackingInfo(trackingRef, companyId = 'default') {
         throw new Error('查询参数不能为空');
     }
     
-    // 检查缓存
+    // 检查缓存 - 临时禁用缓存进行调试
     const cacheKey = `tracking_${trackingRef}_${companyId}`;
-    const cachedData = TrackingUtils.getCachedData(cacheKey);
+    const cachedData = null; // TrackingUtils.getCachedData(cacheKey); // 临时禁用
     if (cachedData) {
         console.log('使用缓存数据:', trackingRef);
         return {
