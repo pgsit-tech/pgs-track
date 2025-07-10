@@ -9,10 +9,10 @@
 
 // AU-OPS API配置
 const AU_OPS_CONFIG = {
-    // 支持两个API地址，优先使用官方地址
+    // 支持两个API地址，优先使用ws.ai-ops.vip（已确认可用）
     baseUrls: [
-        'https://prod.au-ops.com/edi/web-services',
-        'https://ws.ai-ops.vip/edi/web-services'
+        'https://ws.ai-ops.vip/edi/web-services',
+        'https://prod.au-ops.com/edi/web-services'
     ],
     timeout: 30000
 };
@@ -137,8 +137,8 @@ async function handleTrackingRequest(request, apiPath, env) {
                         'Request-Origion': 'SwaggerBootstrapUi',
                         'accept': 'application/json',
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                        'Referer': 'https://prod.au-ops.com/',
-                        'Origin': 'https://prod.au-ops.com'
+                        'Referer': baseUrl.includes('ws.ai-ops.vip') ? 'https://ws.ai-ops.vip/' : 'https://prod.au-ops.com/',
+                        'Origin': baseUrl.includes('ws.ai-ops.vip') ? 'https://ws.ai-ops.vip' : 'https://prod.au-ops.com'
                     },
                     signal: AbortSignal.timeout(AU_OPS_CONFIG.timeout)
                 });
@@ -146,6 +146,16 @@ async function handleTrackingRequest(request, apiPath, env) {
                 // 如果请求成功，跳出循环
                 if (auOpsResponse.ok) {
                     console.log('✅ API调用成功:', baseUrl);
+                    // 检查响应内容
+                    const responseText = await auOpsResponse.text();
+                    console.log('📄 API响应内容:', responseText.substring(0, 200));
+
+                    // 重新创建Response对象，因为已经读取了body
+                    auOpsResponse = new Response(responseText, {
+                        status: auOpsResponse.status,
+                        statusText: auOpsResponse.statusText,
+                        headers: auOpsResponse.headers
+                    });
                     break;
                 } else {
                     console.log(`❌ API调用失败 (${auOpsResponse.status}):`, baseUrl);
