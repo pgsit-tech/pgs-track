@@ -374,7 +374,11 @@ async function queryBatchTrackingInfo(trackingRefs, progressCallback = null) {
  * @returns {Object} 格式化后的轨迹数据
  */
 function formatTrackingData(rawData, apiVersion = 'v5') {
+    console.log('🔍 formatTrackingData 输入数据:', rawData);
+    console.log('🔍 API版本:', apiVersion);
+
     if (!rawData) {
+        console.log('❌ rawData 为空');
         return {
             events: [],
             summary: {
@@ -385,7 +389,7 @@ function formatTrackingData(rawData, apiVersion = 'v5') {
             }
         };
     }
-    
+
     try {
         // 根据API版本处理不同的数据结构
         let events = [];
@@ -394,6 +398,8 @@ function formatTrackingData(rawData, apiVersion = 'v5') {
         if (apiVersion === 'v5') {
             // v5 API数据结构处理 - AU-OPS API格式
             events = rawData.dataList || rawData.events || rawData.trackingEvents || [];
+            console.log('🔍 提取的events数据:', events);
+
             summary = {
                 status: rawData.status || rawData.currentStatus,
                 statusName: rawData.statusName || rawData.currentStatusName || rawData.status,
@@ -403,6 +409,7 @@ function formatTrackingData(rawData, apiVersion = 'v5') {
                 destCountryCode: rawData.destCountryCode,
                 packages: rawData.packages
             };
+            console.log('🔍 生成的summary:', summary);
         } else if (apiVersion === 'v3') {
             // v3 API数据结构处理
             events = rawData.trackingInfo || rawData.events || [];
@@ -415,16 +422,20 @@ function formatTrackingData(rawData, apiVersion = 'v5') {
         }
         
         // 格式化事件数据 - 适配AU-OPS API格式
-        const formattedEvents = events.map((event, index) => ({
-            id: index + 1,
-            timestamp: event.time || event.eventTime || event.timestamp,
-            status: event.node || event.status || event.eventCode,
-            statusName: event.context || event.statusName || event.eventDescription || event.description,
-            location: event.location || event.eventLocation,
-            description: event.context || event.description || event.remark || event.note,
-            isCurrent: index === 0, // 第一个事件为当前状态
-            nodeTime: event.nodeTime
-        }));
+        const formattedEvents = events.map((event, index) => {
+            const formatted = {
+                id: index + 1,
+                timestamp: event.time || event.eventTime || event.timestamp,
+                status: event.node || event.status || event.eventCode,
+                statusName: event.context || event.statusName || event.eventDescription || event.description,
+                location: event.location || event.eventLocation,
+                description: event.context || event.description || event.remark || event.note,
+                isCurrent: index === 0, // 第一个事件为当前状态
+                nodeTime: event.nodeTime
+            };
+            console.log(`🔍 格式化事件 ${index + 1}:`, formatted);
+            return formatted;
+        });
         
         // 按时间排序（最新的在前）
         formattedEvents.sort((a, b) => {
@@ -433,11 +444,16 @@ function formatTrackingData(rawData, apiVersion = 'v5') {
             return timeB - timeA;
         });
         
-        return {
+        const result = {
             events: formattedEvents,
             summary: summary,
             rawData: rawData
         };
+
+        console.log('🔍 formatTrackingData 最终结果:', result);
+        console.log('🔍 events数量:', formattedEvents.length);
+
+        return result;
         
     } catch (error) {
         console.error('格式化轨迹数据失败:', error);
