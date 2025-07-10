@@ -21,7 +21,9 @@ const AU_OPS_CONFIG = {
 const ALLOWED_ORIGINS = [
     'http://localhost:8080',
     'http://localhost:3000',
-    'https://pgs-track.pages.dev'
+    'http://localhost:8000',
+    'https://pgs-track.pages.dev',
+    'https://pgs-track-pages.pages.dev'  // 可能的实际域名
 ];
 
 // 支持的API端点
@@ -298,7 +300,23 @@ function handleCORS(request) {
  */
 function isOriginAllowed(origin) {
     if (!origin) return false;
-    return ALLOWED_ORIGINS.includes(origin) || origin.includes('localhost');
+
+    // 检查精确匹配
+    if (ALLOWED_ORIGINS.includes(origin)) {
+        return true;
+    }
+
+    // 检查localhost（开发环境）
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        return true;
+    }
+
+    // 检查pages.dev域名（Cloudflare Pages）
+    if (origin.includes('pages.dev') && origin.includes('pgs-track')) {
+        return true;
+    }
+
+    return false;
 }
 
 /**
