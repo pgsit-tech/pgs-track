@@ -392,13 +392,16 @@ function formatTrackingData(rawData, apiVersion = 'v5') {
         let summary = {};
         
         if (apiVersion === 'v5') {
-            // v5 API数据结构处理
-            events = rawData.events || rawData.trackingEvents || [];
+            // v5 API数据结构处理 - AU-OPS API格式
+            events = rawData.dataList || rawData.events || rawData.trackingEvents || [];
             summary = {
                 status: rawData.status || rawData.currentStatus,
-                statusName: rawData.statusName || rawData.currentStatusName,
+                statusName: rawData.statusName || rawData.currentStatusName || rawData.status,
                 lastUpdate: rawData.lastUpdate || rawData.lastUpdateTime,
-                totalEvents: events.length
+                totalEvents: events.length,
+                jobNum: rawData.jobNum,
+                destCountryCode: rawData.destCountryCode,
+                packages: rawData.packages
             };
         } else if (apiVersion === 'v3') {
             // v3 API数据结构处理
@@ -411,15 +414,16 @@ function formatTrackingData(rawData, apiVersion = 'v5') {
             };
         }
         
-        // 格式化事件数据
+        // 格式化事件数据 - 适配AU-OPS API格式
         const formattedEvents = events.map((event, index) => ({
             id: index + 1,
-            timestamp: event.eventTime || event.time || event.timestamp,
-            status: event.status || event.eventCode,
-            statusName: event.statusName || event.eventDescription || event.description,
+            timestamp: event.time || event.eventTime || event.timestamp,
+            status: event.node || event.status || event.eventCode,
+            statusName: event.context || event.statusName || event.eventDescription || event.description,
             location: event.location || event.eventLocation,
-            description: event.description || event.remark || event.note,
-            isCurrent: index === 0 // 第一个事件为当前状态
+            description: event.context || event.description || event.remark || event.note,
+            isCurrent: index === 0, // 第一个事件为当前状态
+            nodeTime: event.nodeTime
         }));
         
         // 按时间排序（最新的在前）
