@@ -14,24 +14,30 @@ const API_CONFIG = {
     // 根据环境选择API基础URL
     baseUrl: (() => {
         const hostname = window.location.hostname;
+        console.log('🌐 当前域名:', hostname);
 
         // 本地开发环境
         if (hostname === 'localhost' || hostname === '127.0.0.1') {
+            console.log('🏠 本地开发环境，使用直接API');
             return 'https://ws.ai-ops.vip/edi/web-services';
         }
 
         // 检查是否有环境变量配置的代理URL
         if (typeof window !== 'undefined' && window.WORKERS_PROXY_URL) {
+            console.log('🔧 使用环境变量配置的代理URL:', window.WORKERS_PROXY_URL);
             return window.WORKERS_PROXY_URL;
         }
 
         // 生产环境使用Cloudflare Workers代理
         // 使用自定义域名解决国内网络访问问题
         if (hostname.includes('pages.dev') || hostname.includes('your-domain.com')) {
-            return 'https://track-api.20990909.xyz/api/tracking';
+            const proxyUrl = 'https://track-api.20990909.xyz/api/tracking';
+            console.log('🚀 生产环境，使用自定义域名代理:', proxyUrl);
+            return proxyUrl;
         }
 
         // 默认回退到直接调用（可能会有CORS问题）
+        console.log('⚠️ 使用默认直接API调用');
         return 'https://ws.ai-ops.vip/edi/web-services';
     })(),
     
