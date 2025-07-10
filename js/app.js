@@ -1926,6 +1926,11 @@ function removeHistoryItem(itemId) {
 // ===================================
 
 document.addEventListener('DOMContentLoaded', function() {
+    // 清除缓存（临时解决方案）
+    localStorage.clear();
+    sessionStorage.clear();
+    console.log('🧹 已清除本地缓存');
+
     // 延迟初始化，确保所有资源加载完成
     setTimeout(initializeApp, 100);
 
