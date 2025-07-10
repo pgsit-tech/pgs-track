@@ -4,13 +4,13 @@
  */
 
 // 生产环境Workers代理URL
-window.WORKERS_PROXY_URL = 'https://pgs-tracking-proxy.itsupport-5c8.workers.dev/api/tracking';
+window.WORKERS_PROXY_URL = 'https://track-api.20990909.xyz/api/au-ops';
 
 // 生产环境配置
 window.PRODUCTION_CONFIG = {
     // API配置
     api: {
-        baseUrl: 'https://pgs-tracking-proxy.itsupport-5c8.workers.dev/api/tracking',
+        baseUrl: 'https://track-api.20990909.xyz/api/au-ops',
         timeout: 30000,
         retryAttempts: 3
     },
