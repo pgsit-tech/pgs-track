@@ -60,7 +60,11 @@ async function handleRequest(request, env) {
 
     // 验证来源
     const origin = request.headers.get('Origin');
+    console.log('请求来源:', origin);
+    console.log('User-Agent:', request.headers.get('User-Agent'));
+
     if (!isOriginAllowed(origin)) {
+        console.log('来源被拒绝:', origin);
         return createErrorResponse('访问被拒绝', 403);
     }
 
@@ -299,23 +303,33 @@ function handleCORS(request) {
  * @returns {boolean} 是否允许
  */
 function isOriginAllowed(origin) {
-    if (!origin) return false;
+    if (!origin) {
+        console.log('CORS检查: 无Origin头');
+        return false;
+    }
+
+    console.log('CORS检查: Origin =', origin);
+    console.log('CORS检查: 允许的域名 =', ALLOWED_ORIGINS);
 
     // 检查精确匹配
     if (ALLOWED_ORIGINS.includes(origin)) {
+        console.log('CORS检查: 精确匹配通过');
         return true;
     }
 
     // 检查localhost（开发环境）
     if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        console.log('CORS检查: localhost匹配通过');
         return true;
     }
 
     // 检查pages.dev域名（Cloudflare Pages）
     if (origin.includes('pages.dev') && origin.includes('pgs-track')) {
+        console.log('CORS检查: pages.dev匹配通过');
         return true;
     }
 
+    console.log('CORS检查: 所有检查都失败');
     return false;
 }
 
