@@ -11,15 +11,16 @@
  * API配置对象
  */
 const API_CONFIG = {
-    // 根据环境选择API基础URL
+    // 根据环境选择API基础URL - 智能选择直接调用或代理
     baseUrl: (() => {
         const hostname = window.location.hostname;
         console.log('🌐 当前域名:', hostname);
 
-        // 本地开发环境
+        // 本地开发环境使用Worker代理（避免CORS问题）
         if (hostname === 'localhost' || hostname === '127.0.0.1') {
-            console.log('🏠 本地开发环境，使用直接API');
-            return 'https://ws.ai-ops.vip/edi/web-services';
+            const proxyUrl = 'https://track-api.20990909.xyz/api/au-ops';
+            console.log('🏠 本地开发环境，使用Worker代理:', proxyUrl);
+            return proxyUrl;
         }
 
         // 检查是否有环境变量配置的代理URL
@@ -28,17 +29,16 @@ const API_CONFIG = {
             return window.WORKERS_PROXY_URL;
         }
 
-        // 生产环境使用Cloudflare Workers代理
-        // 使用自定义域名解决国内网络访问问题
+        // 生产环境优先使用直接API调用
         if (hostname.includes('pages.dev') || hostname.includes('your-domain.com')) {
-            const proxyUrl = 'https://track-api.20990909.xyz/api/tracking';
-            console.log('🚀 生产环境，使用自定义域名代理:', proxyUrl);
-            return proxyUrl;
+            console.log('🎯 生产环境，使用直接API调用 ws.ai-ops.vip');
+            return 'https://ws.ai-ops.vip/edi/web-services';
         }
 
-        // 默认回退到直接调用（可能会有CORS问题）
-        console.log('⚠️ 使用默认直接API调用');
-        return 'https://ws.ai-ops.vip/edi/web-services';
+        // 默认使用Worker代理
+        const proxyUrl = 'https://track-api.20990909.xyz/api/au-ops';
+        console.log('🔄 默认使用Worker代理:', proxyUrl);
+        return proxyUrl;
     })(),
     
     // API版本配置
@@ -57,10 +57,10 @@ const API_CONFIG = {
         backoff: 2
     },
     
-    // API凭据（生产环境中应该通过代理保护）
+    // API凭据（使用系统方确认可用的密钥）
     credentials: {
-        appKey: 'kBYt^jva4shvx#xJ8yVlg7iJJW6_xHFL',
-        appToken: 'ImB4ir2Z9tezm3b^FX3eYhJay@WwA5jJB7cgrwqRTV7^@ziL#FaacJaOgCes#r9bjc4JNO6B76BQPtspjF@HA6X@gxmyLl6eeCkgsCZN#CQs#SLckea@VvrEp$vf@2dAsMjXmfDm8M05eEjVq5C~XGKN_yrd4L5hWP~8EBr0aqx~LPNDYaV5$9h8JkxZrG#k9wgEJosRpbMfNe619HuQreu5SfC@9UGVoi1_I08~tcvlt8OSb~3FrJ7m@x568M1'
+        appKey: 'baMccCbpHMZLTZksk5E2E^3KH#L9lvvf',
+        appToken: '^tKm71iS7eKoQaKS5y5L8ZUDjvscOV9F#sSbGSsA6eQuMuMTfvI@yMx$dKXdZtKcVe#KycHvf8sg9oyc1inM#acvAycpD@85rbEeDZMn#EBa$c3bftirsaD_XAai5u7oWL$zgQajCl@zSojZNllxO^jpNAmJXHf0GD89LRE8I~4gm5VXmT2HS~mKS#ewOqoK~eoJhuH@v#7~$rQwGlRwCnt2nXKc$3m21#KBtI2tWIygHqW37zyLN0hMWxe_3yg'
     }
 };
 
@@ -70,8 +70,8 @@ const API_CONFIG = {
 const COMPANY_CONFIGS = {
     company1: {
         name: '总公司',
-        appKey: 'kBYt^jva4shvx#xJ8yVlg7iJJW6_xHFL',
-        appToken: 'ImB4ir2Z9tezm3b^FX3eYhJay@WwA5jJB7cgrwqRTV7^@ziL#FaacJaOgCes#r9bjc4JNO6B76BQPtspjF@HA6X@gxmyLl6eeCkgsCZN#CQs#SLckea@VvrEp$vf@2dAsMjXmfDm8M05eEjVq5C~XGKN_yrd4L5hWP~8EBr0aqx~LPNDYaV5$9h8JkxZrG#k9wgEJosRpbMfNe619HuQreu5SfC@9UGVoi1_I08~tcvlt8OSb~3FrJ7m@x568M1',
+        appKey: 'baMccCbpHMZLTZksk5E2E^3KH#L9lvvf',
+        appToken: '^tKm71iS7eKoQaKS5y5L8ZUDjvscOV9F#sSbGSsA6eQuMuMTfvI@yMx$dKXdZtKcVe#KycHvf8sg9oyc1inM#acvAycpD@85rbEeDZMn#EBa$c3bftirsaD_XAai5u7oWL$zgQajCl@zSojZNllxO^jpNAmJXHf0GD89LRE8I~4gm5VXmT2HS~mKS#ewOqoK~eoJhuH@v#7~$rQwGlRwCnt2nXKc$3m21#KBtI2tWIygHqW37zyLN0hMWxe_3yg',
         priority: 1
     },
     company2: {
@@ -103,14 +103,24 @@ const COMPANY_CONFIGS = {
  * @param {string} companyId - 公司ID
  * @returns {Object} 请求头对象
  */
-function createHeaders(companyId = 'default') {
-    const config = COMPANY_CONFIGS[companyId] || COMPANY_CONFIGS.default;
-    
+function createHeaders(companyId = 'company1') {
+    const config = COMPANY_CONFIGS[companyId] || COMPANY_CONFIGS.company1;
+    const hostname = window.location.hostname;
+
+    // 如果使用Worker代理，只需要基本的请求头
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || API_CONFIG.baseUrl.includes('track-api.20990909.xyz')) {
+        return {
+            'Content-Type': 'application/json',
+            'accept': 'application/json'
+        };
+    }
+
+    // 直接API调用时使用完整的认证头
     return {
-        'Content-Type': 'application/json',
         'appKey': config.appKey,
         'appToken': config.appToken,
-        'Accept': 'application/json'
+        'Request-Origion': 'SwaggerBootstrapUi',
+        'accept': 'application/json'
     };
 }
 

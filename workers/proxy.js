@@ -9,7 +9,7 @@
 
 // AU-OPS API配置
 const AU_OPS_CONFIG = {
-    // 支持两个API地址，优先使用ws.ai-ops.vip（已确认可用）
+    // 支持两个API地址，优先使用ws.ai-ops.vip（系统方确认的API调用域名）
     baseUrls: [
         'https://ws.ai-ops.vip/edi/web-services',
         'https://prod.au-ops.com/edi/web-services'
@@ -73,8 +73,17 @@ async function handleRequest(request, env) {
 
     console.log('CORS验证通过，开始处理API请求');
 
-    // 解析API路径
-    const apiPath = url.pathname.replace('/api/tracking', '');
+    // 解析API路径 - 支持多种路径格式
+    let apiPath = url.pathname;
+
+    // 移除可能的前缀
+    if (apiPath.startsWith('/api/tracking')) {
+        apiPath = apiPath.replace('/api/tracking', '');
+    } else if (apiPath.startsWith('/api/au-ops')) {
+        apiPath = apiPath.replace('/api/au-ops', '');
+    }
+
+    console.log('🛣️ 解析后的API路径:', apiPath);
 
     // 路由到相应的处理函数
     if (apiPath.startsWith('/v5/tracking') || apiPath.startsWith('/v3/tracking')) {
@@ -82,6 +91,7 @@ async function handleRequest(request, env) {
     } else if (apiPath.startsWith('/fms/')) {
         return handleFMSRequest(request, apiPath, env);
     } else {
+        console.log('❌ 不支持的API路径:', apiPath);
         return createErrorResponse('服务暂时不可用', 404);
     }
 }
@@ -124,9 +134,12 @@ async function handleTrackingRequest(request, apiPath, env) {
                 const auOpsUrl = `${baseUrl}${apiPath}?trackingRef=${encodeURIComponent(trackingRef)}`;
 
                 console.log('🎯 尝试AU-OPS API:', baseUrl);
+                console.log('🔗 完整URL:', auOpsUrl);
                 console.log('🔑 API密钥长度:', appKey ? appKey.length : 'undefined');
                 console.log('🔑 Token长度:', appToken ? appToken.length : 'undefined');
                 console.log('🔑 API密钥前缀:', appKey ? appKey.substring(0, 10) + '...' : 'undefined');
+                console.log('🔑 Token前缀:', appToken ? appToken.substring(0, 10) + '...' : 'undefined');
+                console.log('🔑 Token后缀:', appToken ? '...' + appToken.substring(appToken.length - 10) : 'undefined');
 
                 auOpsResponse = await fetch(auOpsUrl, {
                     method: 'GET',
