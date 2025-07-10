@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOTP调试对比</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .result { background: #f5f5f5; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .error { background: #ffebee; color: #c62828; }
+        .success { background: #e8f5e8; color: #2e7d32; }
+        .warning { background: #fff3e0; color: #f57c00; }
+        pre { white-space: pre-wrap; word-wrap: break-word; font-size: 12px; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        input { padding: 8px; margin: 5px; width: 300px; }
+        .compare { display: flex; gap: 20px; }
+        .compare > div { flex: 1; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 TOTP算法调试对比</h1>
+        
+        <div>
+            <label>测试密钥:</label>
+            <input type="text" id="testSecret" value="JBSWY3DPEHPK3PXP" placeholder="输入Base32密钥">
+            <button onclick="useRFCTestKey()">使用RFC测试密钥</button>
+        </div>
+        
+        <div>
+            <button onclick="compareAlgorithms()">对比算法实现</button>
+            <button onclick="testCurrentTime()">测试当前时间</button>
+            <button onclick="testFixedTime()">测试固定时间</button>
+            <button onclick="clearResults()">清除结果</button>
+        </div>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        function addResult(title, content, type = 'result') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = `<h3>${title}</h3><pre>${content}</pre>`;
+            results.appendChild(div);
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        function useRFCTestKey() {
+            document.getElementById('testSecret').value = 'JBSWY3DPEHPK3PXP';
+        }
+
+        // 标准Base32解码实现
+        function standardBase32Decode(encoded) {
+            const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+            let bits = '';
+            
+            // 移除填充和空格，转大写
+            encoded = encoded.replace(/[=\\s]/g, '').toUpperCase();
+            
+            for (let i = 0; i < encoded.length; i++) {
+                const val = alphabet.indexOf(encoded.charAt(i));
+                if (val === -1) throw new Error('Invalid base32 character: ' + encoded.charAt(i));
+                bits += val.toString(2).padStart(5, '0');
+            }
+            
+            const bytes = [];
+            for (let i = 0; i < bits.length; i += 8) {
+                if (i + 8 <= bits.length) {
+                    bytes.push(parseInt(bits.substr(i, 8), 2));
+                }
+            }
+            return new Uint8Array(bytes);
+        }
+
+        // 标准HMAC-SHA1实现（使用Web Crypto API）
+        async function standardHmacSHA1(key, data) {
+            const cryptoKey = await crypto.subtle.importKey(
+                'raw',
+                key,
+                { name: 'HMAC', hash: 'SHA-1' },
+                false,
+                ['sign']
+            );
+            
+            const signature = await crypto.subtle.sign('HMAC', cryptoKey, data);
+            return new Uint8Array(signature);
+        }
+
+        // 标准TOTP实现
+        async function standardTOTP(secret, timestamp, period = 30, digits = 6) {
+            const key = standardBase32Decode(secret);
+            const timeStep = Math.floor(timestamp / 1000 / period);
+            
+            // 构造8字节大端序时间步长
+            const data = new ArrayBuffer(8);
+            const view = new DataView(data);
+            view.setUint32(4, timeStep, false); // 大端序，高位为0
+            
+            const hash = await standardHmacSHA1(key, new Uint8Array(data));
+            
+            // 动态截取
+            const offset = hash[hash.length - 1] & 0xf;
+            const code = ((hash[offset] & 0x7f) << 24) |
+                        ((hash[offset + 1] & 0xff) << 16) |
+                        ((hash[offset + 2] & 0xff) << 8) |
+                        (hash[offset + 3] & 0xff);
+            
+            return {
+                code: (code % Math.pow(10, digits)).toString().padStart(digits, '0'),
+                timeStep,
+                key: Array.from(key).map(b => b.toString(16).padStart(2, '0')).join(''),
+                timeBytes: Array.from(new Uint8Array(data)).map(b => b.toString(16).padStart(2, '0')).join(''),
+                hash: Array.from(hash).map(b => b.toString(16).padStart(2, '0')).join(''),
+                offset,
+                rawCode: code
+            };
+        }
+
+        async function compareAlgorithms() {
+            const secret = document.getElementById('testSecret').value;
+            if (!secret) {
+                addResult('❌ 错误', '请输入测试密钥', 'error');
+                return;
+            }
+
+            try {
+                const timestamp = Date.now();
+                
+                // 使用标准算法
+                const standard = await standardTOTP(secret, timestamp);
+                
+                let result = `密钥: ${secret}\\n`;
+                result += `时间戳: ${timestamp} (${new Date(timestamp).toISOString()})\\n`;
+                result += `时间步长: ${standard.timeStep}\\n\\n`;
+                
+                result += `=== 标准算法结果 ===\\n`;
+                result += `密钥(hex): ${standard.key}\\n`;
+                result += `时间字节(hex): ${standard.timeBytes}\\n`;
+                result += `HMAC结果(hex): ${standard.hash}\\n`;
+                result += `偏移量: ${standard.offset}\\n`;
+                result += `原始代码: ${standard.rawCode}\\n`;
+                result += `最终验证码: ${standard.code}\\n`;
+                
+                addResult('🔍 算法对比结果', result, 'success');
+                
+            } catch (error) {
+                addResult('❌ 对比失败', error.message, 'error');
+            }
+        }
+
+        async function testCurrentTime() {
+            const secret = document.getElementById('testSecret').value;
+            if (!secret) {
+                addResult('❌ 错误', '请输入测试密钥', 'error');
+                return;
+            }
+
+            try {
+                const now = Date.now();
+                let result = `当前时间测试\\n`;
+                result += `时间: ${new Date(now).toISOString()}\\n`;
+                result += `时间戳: ${now}\\n\\n`;
+
+                // 测试当前时间和前后几个时间窗口
+                for (let i = -2; i <= 2; i++) {
+                    const testTime = now + (i * 30 * 1000);
+                    const totp = await standardTOTP(secret, testTime);
+                    result += `窗口 ${i}: ${totp.code} (${new Date(testTime).toISOString()})\\n`;
+                }
+                
+                addResult('🕐 当前时间窗口测试', result, 'success');
+                
+            } catch (error) {
+                addResult('❌ 测试失败', error.message, 'error');
+            }
+        }
+
+        async function testFixedTime() {
+            const secret = document.getElementById('testSecret').value;
+            if (!secret) {
+                addResult('❌ 错误', '请输入测试密钥', 'error');
+                return;
+            }
+
+            try {
+                // RFC 6238测试向量
+                const testVectors = [
+                    { time: 59, expected: '287082' },
+                    { time: 1111111109, expected: '081804' },
+                    { time: 1111111111, expected: '050471' },
+                    { time: 1234567890, expected: '005924' },
+                    { time: 2000000000, expected: '279037' },
+                    { time: 20000000000, expected: '353130' }
+                ];
+
+                let result = `RFC 6238测试向量验证\\n`;
+                result += `密钥: ${secret}\\n\\n`;
+
+                for (const vector of testVectors) {
+                    const timestamp = vector.time * 1000;
+                    const totp = await standardTOTP(secret, timestamp);
+                    const match = totp.code === vector.expected ? '✅' : '❌';
+                    result += `时间: ${vector.time} -> 期望: ${vector.expected}, 实际: ${totp.code} ${match}\\n`;
+                }
+                
+                addResult('📋 RFC测试向量验证', result, 'result');
+                
+            } catch (error) {
+                addResult('❌ 测试失败', error.message, 'error');
+            }
+        }
+
+        // 页面加载时显示说明
+        window.addEventListener('load', function() {
+            addResult('📝 使用说明', `
+这个页面用于调试TOTP算法实现。
+
+1. 使用标准的Web Crypto API实现HMAC-SHA1
+2. 使用标准的Base32解码
+3. 严格按照RFC 6238规范实现
+
+默认使用RFC 6238的测试密钥 JBSWY3DPEHPK3PXP。
+点击"测试固定时间"验证算法正确性。
+点击"测试当前时间"获取当前时间的验证码。
+            `, 'result');
+        });
+    </script>
+</body>
+</html>

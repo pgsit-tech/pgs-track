@@ -382,13 +382,41 @@
     
     <!-- Authentication Check -->
     <script>
-        // 检查认证状态
-        document.addEventListener('DOMContentLoaded', function() {
-            const isAuthenticated = sessionStorage.getItem('au_ops_authenticated');
-            const hasSecret = localStorage.getItem('au_ops_auth_secret');
+        // 检查登录状态
+        function checkLoginSession() {
+            try {
+                const sessionData = JSON.parse(localStorage.getItem('pgs_admin_session') || '{}');
 
-            if (!isAuthenticated || !hasSecret) {
-                // 未认证，跳转到认证页面
+                if (!sessionData.isLoggedIn) {
+                    return false;
+                }
+
+                // 检查是否过期
+                if (Date.now() > sessionData.expiresAt) {
+                    localStorage.removeItem('pgs_admin_session');
+                    return false;
+                }
+
+                return true;
+            } catch (error) {
+                console.error('检查登录状态失败:', error);
+                return false;
+            }
+        }
+
+        // 退出登录
+        function logout() {
+            if (confirm('确定要退出后台管理吗？')) {
+                localStorage.removeItem('pgs_admin_session');
+                window.location.href = 'auth.html';
+            }
+        }
+
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 检查登录状态
+            if (!checkLoginSession()) {
+                // 未登录，跳转到登录页面
                 window.location.href = 'auth.html';
                 return;
             }
@@ -398,17 +426,14 @@
             logoutBtn.className = 'nav-link admin-nav-link';
             logoutBtn.href = '#';
             logoutBtn.innerHTML = '<i class="fas fa-sign-out-alt me-2"></i>安全退出';
-            logoutBtn.onclick = function() {
-                if (confirm('确定要退出后台管理吗？')) {
-                    sessionStorage.removeItem('au_ops_authenticated');
-                    window.location.href = 'auth.html';
-                }
-            };
+            logoutBtn.onclick = logout;
 
             // 添加到导航菜单
             const nav = document.querySelector('.nav.flex-column');
             const hr = nav.querySelector('hr');
             nav.insertBefore(logoutBtn, hr);
+
+            console.log('✅ 后台管理系统已加载，用户已认证');
         });
     </script>
 
