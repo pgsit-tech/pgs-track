@@ -427,21 +427,24 @@ function verifyTOTP(token, secret = null) {
         
         // 验证当前时间窗口和前后一个时间窗口
         const currentTimeMs = Date.now(); // 毫秒时间戳
-        const windowMs = AUTH_CONFIG.period * 1000; // 时间窗口（毫秒）
+        const currentTimeSec = Math.floor(currentTimeMs / 1000); // 秒时间戳
+        const windowSec = AUTH_CONFIG.period; // 时间窗口（秒）
 
         console.log('🔍 TOTP验证调试信息:');
         console.log('当前时间戳(毫秒):', currentTimeMs);
+        console.log('当前时间戳(秒):', currentTimeSec);
         console.log('当前时间:', new Date(currentTimeMs).toISOString());
         console.log('输入验证码:', token);
         console.log('时间窗口(秒):', AUTH_CONFIG.period);
 
         for (let i = -1; i <= 1; i++) {
-            const timestampMs = currentTimeMs + (i * windowMs);
+            const timestampSec = currentTimeSec + (i * windowSec);
+            const timestampMs = timestampSec * 1000; // 转换回毫秒用于显示
 
-            // 使用正确的毫秒时间戳调用OTPAuth
+            // 使用毫秒时间戳调用OTPAuth（内部会自动转换为秒）
             const expectedToken = totpInstance.generate({ timestamp: timestampMs });
 
-            console.log(`时间窗口 ${i}: 时间戳=${timestampMs}, 时间=${new Date(timestampMs).toISOString()}, 期望验证码=${expectedToken}`);
+            console.log(`时间窗口 ${i}: 时间戳(秒)=${timestampSec}, 时间戳(毫秒)=${timestampMs}, 时间=${new Date(timestampMs).toISOString()}, 期望验证码=${expectedToken}`);
 
             if (token === expectedToken) {
                 console.log('✅ 验证成功！匹配的时间窗口:', i);
