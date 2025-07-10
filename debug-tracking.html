@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PGS Tracking Debug</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 3px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        input[type="text"] {
+            width: 300px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 PGS Tracking 调试工具</h1>
+        
+        <div class="test-section info">
+            <h3>📋 测试信息</h3>
+            <p><strong>测试订单号:</strong> CBSZSEAU24034484</p>
+            <p><strong>当前域名:</strong> <span id="currentDomain"></span></p>
+            <p><strong>API地址:</strong> <span id="apiUrl"></span></p>
+        </div>
+
+        <div class="test-section">
+            <h3>🔧 手动测试</h3>
+            <input type="text" id="trackingInput" placeholder="输入订单号" value="CBSZSEAU24034484">
+            <button onclick="testTracking()">🔍 查询物流</button>
+            <div id="trackingResult" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🌐 网络连接测试</h3>
+            <button onclick="testApiConnection()">测试API连接</button>
+            <button onclick="testWorkerConnection()">测试Worker连接</button>
+            <div id="connectionResult" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔍 浏览器信息</h3>
+            <button onclick="showBrowserInfo()">显示浏览器信息</button>
+            <div id="browserInfo" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 实时日志</h3>
+            <button onclick="clearLogs()">清除日志</button>
+            <div id="logs" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        // 日志函数
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logDiv = document.getElementById('logs');
+            const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}\n`;
+            logDiv.textContent += logEntry;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(logEntry);
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').textContent = '';
+        }
+
+        // 获取API URL
+        function getApiUrl() {
+            const hostname = window.location.hostname;
+            log(`当前访问域名: ${hostname}`);
+            
+            if (hostname.includes('localhost') || hostname.includes('127.0.0.1')) {
+                return 'https://pgs-tracking-proxy.itsupport-5c8.workers.dev/api/tracking';
+            }
+            
+            if (hostname.includes('pages.dev') || hostname.includes('your-domain.com')) {
+                return 'https://track-api.20990909.xyz/api/tracking';
+            }
+            
+            return 'https://pgs-tracking-proxy.itsupport-5c8.workers.dev/api/tracking';
+        }
+
+        // 初始化页面信息
+        function initPageInfo() {
+            document.getElementById('currentDomain').textContent = window.location.hostname;
+            const apiUrl = getApiUrl();
+            document.getElementById('apiUrl').textContent = apiUrl;
+            log(`页面初始化完成，API地址: ${apiUrl}`);
+        }
+
+        // 测试物流查询
+        async function testTracking() {
+            const trackingRef = document.getElementById('trackingInput').value.trim();
+            const resultDiv = document.getElementById('trackingResult');
+            
+            if (!trackingRef) {
+                alert('请输入订单号');
+                return;
+            }
+
+            log(`开始查询订单: ${trackingRef}`);
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '查询中...';
+
+            try {
+                const apiUrl = getApiUrl();
+                const fullUrl = `${apiUrl}/v5/tracking?trackingRef=${encodeURIComponent(trackingRef)}`;
+                log(`请求URL: ${fullUrl}`);
+
+                const response = await fetch(fullUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Origin': window.location.origin
+                    }
+                });
+
+                log(`响应状态: ${response.status} ${response.statusText}`);
+                
+                const responseText = await response.text();
+                log(`响应内容: ${responseText}`);
+
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (e) {
+                    data = { error: '响应不是有效的JSON', raw: responseText };
+                }
+
+                resultDiv.textContent = JSON.stringify(data, null, 2);
+                
+                if (response.ok && data.success) {
+                    resultDiv.className = 'result success';
+                    log('查询成功');
+                } else {
+                    resultDiv.className = 'result error';
+                    log(`查询失败: ${data.error || data.description || '未知错误'}`);
+                }
+
+            } catch (error) {
+                log(`请求异常: ${error.message}`);
+                resultDiv.textContent = `错误: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+
+        // 测试API连接
+        async function testApiConnection() {
+            const resultDiv = document.getElementById('connectionResult');
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '测试中...';
+
+            const tests = [
+                { name: '自定义域名API', url: 'https://track-api.20990909.xyz/api/tracking/v5/tracking?trackingRef=TEST' },
+                { name: 'Workers域名API', url: 'https://pgs-tracking-proxy.itsupport-5c8.workers.dev/api/tracking/v5/tracking?trackingRef=TEST' }
+            ];
+
+            let results = '';
+            for (const test of tests) {
+                log(`测试 ${test.name}: ${test.url}`);
+                try {
+                    const response = await fetch(test.url, {
+                        method: 'GET',
+                        headers: { 'Origin': window.location.origin }
+                    });
+                    
+                    const text = await response.text();
+                    results += `${test.name}: ${response.status} ${response.statusText}\n`;
+                    results += `响应: ${text.substring(0, 200)}...\n\n`;
+                    log(`${test.name} 响应: ${response.status}`);
+                } catch (error) {
+                    results += `${test.name}: 错误 - ${error.message}\n\n`;
+                    log(`${test.name} 错误: ${error.message}`);
+                }
+            }
+
+            resultDiv.textContent = results;
+        }
+
+        // 测试Worker连接
+        async function testWorkerConnection() {
+            log('测试Worker连接...');
+            // 这里可以添加更多Worker特定的测试
+        }
+
+        // 显示浏览器信息
+        function showBrowserInfo() {
+            const info = {
+                userAgent: navigator.userAgent,
+                language: navigator.language,
+                platform: navigator.platform,
+                cookieEnabled: navigator.cookieEnabled,
+                onLine: navigator.onLine,
+                url: window.location.href,
+                referrer: document.referrer,
+                timestamp: new Date().toISOString()
+            };
+
+            document.getElementById('browserInfo').style.display = 'block';
+            document.getElementById('browserInfo').textContent = JSON.stringify(info, null, 2);
+            log('浏览器信息已显示');
+        }
+
+        // 页面加载完成后初始化
+        window.addEventListener('load', initPageInfo);
+    </script>
+</body>
+</html>
