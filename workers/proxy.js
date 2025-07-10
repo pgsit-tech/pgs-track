@@ -55,8 +55,11 @@ async function handleRequest(request, env) {
 
     // 只允许GET请求
     if (request.method !== 'GET') {
+        console.log('不支持的请求方法:', request.method);
         return createErrorResponse('服务暂时不可用', 405);
     }
+
+    console.log('收到GET请求:', request.method, request.url);
 
     // 验证来源
     const origin = request.headers.get('Origin');
@@ -67,6 +70,8 @@ async function handleRequest(request, env) {
         console.log('来源被拒绝:', origin);
         return createErrorResponse('访问被拒绝', 403);
     }
+
+    console.log('CORS验证通过，开始处理API请求');
 
     // 解析API路径
     const apiPath = url.pathname.replace('/api/tracking', '');
@@ -281,19 +286,28 @@ async function handleFMSRequest(request, apiPath, env) {
  */
 function handleCORS(request) {
     const origin = request.headers.get('Origin');
-    
+
+    console.log('处理OPTIONS预检请求, Origin:', origin);
+
     if (!isOriginAllowed(origin)) {
+        console.log('OPTIONS请求被拒绝');
         return new Response(null, { status: 403 });
     }
-    
+
+    const corsHeaders = {
+        'Access-Control-Allow-Origin': origin,
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, Accept, Origin, User-Agent',
+        'Access-Control-Allow-Credentials': 'false',
+        'Access-Control-Max-Age': '86400',
+        'Vary': 'Origin'
+    };
+
+    console.log('OPTIONS响应头:', corsHeaders);
+
     return new Response(null, {
-        status: 200,
-        headers: {
-            'Access-Control-Allow-Origin': origin,
-            'Access-Control-Allow-Methods': 'GET, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-            'Access-Control-Max-Age': '86400'
-        }
+        status: 204, // 使用204 No Content而不是200
+        headers: corsHeaders
     });
 }
 
