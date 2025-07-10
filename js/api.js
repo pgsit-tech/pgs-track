@@ -26,9 +26,9 @@ const API_CONFIG = {
         }
 
         // 生产环境使用Cloudflare Workers代理
-        // 使用实际部署的Workers域名
+        // 使用自定义域名解决国内网络访问问题
         if (hostname.includes('pages.dev') || hostname.includes('your-domain.com')) {
-            return 'https://pgs-tracking-proxy.itsupport-5c8.workers.dev/api/tracking';
+            return 'https://track-api.20990909.xyz/api/tracking';
         }
 
         // 默认回退到直接调用（可能会有CORS问题）
