@@ -1993,11 +1993,29 @@ function saveToHistory(trackingRef) {
 // 页面加载完成后初始化
 // ===================================
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     // 清除缓存（临时解决方案）
     localStorage.clear();
     sessionStorage.clear();
     console.log('🧹 已清除本地缓存');
+
+    // 等待配置加载完成
+    console.log('⏳ 等待配置加载完成...');
+
+    // 等待配置加载器完成
+    let configLoadAttempts = 0;
+    const maxConfigLoadAttempts = 50; // 最多等待5秒
+
+    while (!window.SITE_CONFIG && configLoadAttempts < maxConfigLoadAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        configLoadAttempts++;
+    }
+
+    if (window.SITE_CONFIG) {
+        console.log('✅ 配置加载完成，开始初始化应用');
+    } else {
+        console.warn('⚠️ 配置加载超时，使用默认配置初始化');
+    }
 
     // 延迟初始化，确保所有资源加载完成
     setTimeout(initializeApp, 100);

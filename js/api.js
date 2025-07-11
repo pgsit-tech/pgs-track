@@ -65,34 +65,43 @@ const API_CONFIG = {
 };
 
 /**
- * 多公司配置 - 各分公司API汇聚
+ * 获取动态公司配置
+ * 优先使用从KV存储加载的配置，回退到硬编码配置
  */
-const COMPANY_CONFIGS = {
-    company1: {
-        name: '总公司',
-        appKey: 'baMccCbpHMZLTZksk5E2E^3KH#L9lvvf',
-        appToken: '^tKm71iS7eKoQaKS5y5L8ZUDjvscOV9F#sSbGSsA6eQuMuMTfvI@yMx$dKXdZtKcVe#KycHvf8sg9oyc1inM#acvAycpD@85rbEeDZMn#EBa$c3bftirsaD_XAai5u7oWL$zgQajCl@zSojZNllxO^jpNAmJXHf0GD89LRE8I~4gm5VXmT2HS~mKS#ewOqoK~eoJhuH@v#7~$rQwGlRwCnt2nXKc$3m21#KBtI2tWIygHqW37zyLN0hMWxe_3yg',
-        priority: 1
-    },
-    company2: {
-        name: '分公司A',
-        appKey: 'company2-app-key-here',
-        appToken: 'company2-app-token-here',
-        priority: 2
-    },
-    company3: {
-        name: '分公司B',
-        appKey: 'company3-app-key-here',
-        appToken: 'company3-app-token-here',
-        priority: 3
-    },
-    company4: {
-        name: '分公司C',
-        appKey: 'company4-app-key-here',
-        appToken: 'company4-app-token-here',
-        priority: 4
+function getCompanyConfigs() {
+    // 优先使用从KV存储加载的配置
+    if (window.SITE_CONFIG?.api?.companies) {
+        const dynamicConfigs = {};
+        window.SITE_CONFIG.api.companies.forEach(company => {
+            dynamicConfigs[company.id] = {
+                name: company.name,
+                appKey: company.appKey,
+                appToken: company.appToken,
+                priority: company.priority,
+                enabled: company.enabled !== false
+            };
+        });
+        console.log('✅ 使用动态公司配置:', Object.keys(dynamicConfigs));
+        return dynamicConfigs;
     }
-};
+
+    // 回退到硬编码配置（兼容性）
+    console.log('⚠️ 使用硬编码公司配置（回退）');
+    return {
+        company1: {
+            name: '总公司',
+            appKey: 'baMccCbpHMZLTZksk5E2E^3KH#L9lvvf',
+            appToken: '^tKm71iS7eKoQaKS5y5L8ZUDjvscOV9F#sSbGSsA6eQuMuMTfvI@yMx$dKXdZtKcVe#KycHvf8sg9oyc1inM#acvAycpD@85rbEeDZMn#EBa$c3bftirsaD_XAai5u7oWL$zgQajCl@zSojZNllxO^jpNAmJXHf0GD89LRE8I~4gm5VXmT2HS~mKS#ewOqoK~eoJhuH@v#7~$rQwGlRwCnt2nXKc$3m21#KBtI2tWIygHqW37zyLN0hMWxe_3yg',
+            priority: 1
+        }
+    };
+}
+
+/**
+ * 多公司配置 - 各分公司API汇聚
+ * @deprecated 使用 getCompanyConfigs() 获取动态配置
+ */
+const COMPANY_CONFIGS = getCompanyConfigs();
 
 // ===================================
 // HTTP请求工具
@@ -104,7 +113,8 @@ const COMPANY_CONFIGS = {
  * @returns {Object} 请求头对象
  */
 function createHeaders(companyId = 'company1') {
-    const config = COMPANY_CONFIGS[companyId] || COMPANY_CONFIGS.company1;
+    const companyConfigs = getCompanyConfigs();
+    const config = companyConfigs[companyId] || Object.values(companyConfigs)[0];
     const hostname = window.location.hostname;
 
     // 如果使用Worker代理，只需要基本的请求头
@@ -243,7 +253,9 @@ async function queryTrackingInfoFromAllCompanies(trackingRef) {
     console.log(`🔍 开始多公司汇聚查询: ${trackingRef}`);
 
     // 按优先级排序公司配置
-    const companies = Object.entries(COMPANY_CONFIGS)
+    const companyConfigs = getCompanyConfigs();
+    const companies = Object.entries(companyConfigs)
+        .filter(([,config]) => config.enabled !== false)
         .sort(([,a], [,b]) => a.priority - b.priority);
 
     const results = [];
@@ -537,7 +549,10 @@ if (typeof window !== 'undefined') {
     window.TrackingAPI = {
         // 配置
         API_CONFIG,
-        COMPANY_CONFIGS,
+        get COMPANY_CONFIGS() {
+            return getCompanyConfigs();
+        },
+        getCompanyConfigs,
 
         // 核心查询功能
         queryTrackingInfo,
