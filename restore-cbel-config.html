@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CBEL配置快速恢复</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.warning { background: #fff3cd; color: #856404; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: black; }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .alert {
+            padding: 15px;
+            margin: 20px 0;
+            border: 1px solid transparent;
+            border-radius: 4px;
+        }
+        .alert-danger {
+            color: #721c24;
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 PGS Track - CBEL配置快速恢复</h1>
+        
+        <div class="alert alert-danger">
+            <strong>⚠️ 重要提醒：</strong>
+            Worker重新部署后KV存储配置会被重置！每次部署后都需要重新恢复CBEL配置。
+        </div>
+        
+        <div id="status" class="status info">准备恢复CBEL配置...</div>
+        
+        <div style="margin: 20px 0;">
+            <button class="btn-primary" onclick="restoreConfig()">🔄 恢复CBEL配置</button>
+            <button class="btn-success" onclick="verifyConfig()">✅ 验证配置状态</button>
+            <button class="btn-warning" onclick="checkCurrentConfig()">🔍 检查当前配置</button>
+        </div>
+        
+        <div>
+            <h3>操作日志</h3>
+            <pre id="log">等待操作...</pre>
+        </div>
+        
+        <div>
+            <h3>当前配置状态</h3>
+            <pre id="configStatus">点击"检查当前配置"查看</pre>
+        </div>
+    </div>
+
+    <script src="scripts/restore-cbel-config.js"></script>
+    <script>
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+        }
+
+        function addLog(message) {
+            const logEl = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logEl.textContent += `[${timestamp}] ${message}\n`;
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        async function restoreConfig() {
+            updateStatus('正在恢复CBEL配置...', 'info');
+            addLog('开始恢复CBEL配置');
+            
+            try {
+                const success = await window.restoreCBELConfig();
+                
+                if (success) {
+                    updateStatus('CBEL配置恢复成功！', 'success');
+                    addLog('✅ CBEL配置恢复成功');
+                    
+                    // 自动验证
+                    setTimeout(verifyConfig, 2000);
+                } else {
+                    updateStatus('CBEL配置恢复失败', 'error');
+                    addLog('❌ CBEL配置恢复失败');
+                }
+            } catch (error) {
+                updateStatus(`恢复失败: ${error.message}`, 'error');
+                addLog(`❌ 恢复异常: ${error.message}`);
+            }
+        }
+
+        async function verifyConfig() {
+            updateStatus('正在验证配置...', 'info');
+            addLog('开始验证配置状态');
+            
+            try {
+                const verified = await window.verifyConfig();
+                
+                if (verified) {
+                    updateStatus('✅ 配置验证成功 - 数据来源: CBEL', 'success');
+                    addLog('✅ 配置验证成功 - 数据来源: CBEL');
+                } else {
+                    updateStatus('⚠️ 配置验证失败 - 可能仍显示"总公司"', 'warning');
+                    addLog('⚠️ 配置验证失败');
+                }
+            } catch (error) {
+                updateStatus(`验证失败: ${error.message}`, 'error');
+                addLog(`❌ 验证异常: ${error.message}`);
+            }
+        }
+
+        async function checkCurrentConfig() {
+            updateStatus('正在检查当前配置...', 'info');
+            addLog('检查当前配置状态');
+            
+            try {
+                const response = await fetch('https://track-api.20990909.xyz/config/site', {
+                    method: 'GET',
+                    headers: {
+                        'Origin': window.location.origin,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const configStatusEl = document.getElementById('configStatus');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    configStatusEl.textContent = JSON.stringify(data, null, 2);
+                    
+                    const companyName = data.siteConfig?.api?.companies?.[0]?.name;
+                    if (companyName === 'CBEL') {
+                        updateStatus(`✅ 当前配置正确 - 数据来源: ${companyName}`, 'success');
+                        addLog(`✅ 当前配置正确 - 数据来源: ${companyName}`);
+                    } else {
+                        updateStatus(`⚠️ 当前配置异常 - 数据来源: ${companyName || '未知'}`, 'warning');
+                        addLog(`⚠️ 当前配置异常 - 数据来源: ${companyName || '未知'}`);
+                    }
+                } else if (response.status === 404) {
+                    configStatusEl.textContent = '❌ KV存储中没有配置数据';
+                    updateStatus('❌ KV存储为空，需要恢复配置', 'error');
+                    addLog('❌ KV存储为空');
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                updateStatus(`检查失败: ${error.message}`, 'error');
+                addLog(`❌ 检查异常: ${error.message}`);
+                document.getElementById('configStatus').textContent = `错误: ${error.message}`;
+            }
+        }
+
+        // 页面加载时自动检查配置
+        window.addEventListener('load', function() {
+            addLog('页面加载完成');
+            setTimeout(checkCurrentConfig, 1000);
+        });
+    </script>
+</body>
+</html>
