@@ -411,6 +411,9 @@ async function loadConfig() {
         // 渲染页脚配置
         renderFooterConfig();
 
+        // 渲染API配置
+        renderCompaniesConfig();
+
         console.log('✅ 配置加载完成');
     } catch (error) {
         console.error('❌ 配置加载失败:', error);
@@ -706,10 +709,20 @@ async function saveAPIConfig() {
     // 立即应用配置
     applyConfigToSession();
 
-    // 同步配置到Worker
-    await syncConfigToWorker();
+    // 同步配置到Worker KV存储
+    const workerSynced = await syncConfigToWorker();
 
-    showToast('API配置已保存并同步到Worker', 'success');
+    // 同时保存网站配置到KV（包含API配置）
+    const kvSaved = await saveConfigToKV();
+
+    if (workerSynced && kvSaved) {
+        showToast('API配置已保存并同步到KV存储', 'success');
+    } else if (workerSynced) {
+        showToast('API配置已同步到Worker（网站配置KV保存失败）', 'warning');
+    } else {
+        showToast('API配置已保存（同步失败）', 'warning');
+    }
+
     console.log('API配置已更新:', siteConfig.api);
 }
 
@@ -952,25 +965,57 @@ async function loadConfigFromKV() {
             return null;
         }
 
-        const response = await fetch(`${workerUrl}/config/site`, {
-            method: 'GET',
-            headers: {
-                'Origin': window.location.origin,
-                'Accept': 'application/json'
-            }
-        });
+        // 并行加载网站配置和API配置
+        const [siteResponse, apiResponse] = await Promise.all([
+            fetch(`${workerUrl}/config/site`, {
+                method: 'GET',
+                headers: {
+                    'Origin': window.location.origin,
+                    'Accept': 'application/json'
+                }
+            }),
+            fetch(`${workerUrl}/config/companies`, {
+                method: 'GET',
+                headers: {
+                    'Origin': window.location.origin,
+                    'Accept': 'application/json'
+                }
+            })
+        ]);
 
-        if (response.ok) {
-            const configData = await response.json();
-            console.log('✅ 从KV存储加载配置:', configData);
-            return configData.siteConfig || null;
-        } else if (response.status === 404) {
-            console.log('ℹ️ KV存储中没有配置数据，使用默认配置');
-            return null;
-        } else {
-            console.warn('⚠️ 从KV加载配置失败:', response.status, response.statusText);
-            return null;
+        let config = null;
+
+        // 加载网站配置
+        if (siteResponse.ok) {
+            const siteData = await siteResponse.json();
+            config = siteData.siteConfig || {};
+            console.log('✅ 从KV存储加载网站配置成功');
+        } else if (siteResponse.status !== 404) {
+            console.warn('⚠️ 从KV加载网站配置失败:', siteResponse.status, siteResponse.statusText);
         }
+
+        // 加载API配置
+        if (apiResponse.ok) {
+            const apiData = await apiResponse.json();
+            if (!config) config = {};
+
+            // 转换Worker格式的API配置为管理端格式
+            config.api = {
+                companies: Object.entries(apiData).map(([id, company]) => ({
+                    id: id,
+                    name: company.name,
+                    appKey: company.appKey,
+                    appToken: company.appToken,
+                    priority: company.priority || 1,
+                    enabled: company.enabled !== false
+                }))
+            };
+            console.log('✅ 从KV存储加载API配置成功，公司数量:', config.api.companies.length);
+        } else if (apiResponse.status !== 404) {
+            console.warn('⚠️ 从KV加载API配置失败:', apiResponse.status, apiResponse.statusText);
+        }
+
+        return config;
 
     } catch (error) {
         console.error('❌ 从KV存储加载配置失败:', error);
@@ -1050,7 +1095,7 @@ async function syncConfigToWorker() {
         const workerUrl = getWorkerProxyUrl();
         if (!workerUrl) {
             console.warn('⚠️ Worker代理URL未配置，跳过同步');
-            return;
+            return false;
         }
 
         // 准备同步的配置数据
@@ -1087,16 +1132,16 @@ async function syncConfigToWorker() {
         if (response.ok) {
             const result = await response.json();
             console.log('✅ Worker配置同步成功:', result);
-            showToast('Worker配置同步成功', 'success');
+            return true;
         } else {
             const error = await response.text();
             console.error('❌ Worker配置同步失败:', error);
-            showToast('Worker配置同步失败', 'warning');
+            return false;
         }
 
     } catch (error) {
         console.error('❌ Worker配置同步异常:', error);
-        showToast('Worker配置同步异常', 'warning');
+        return false;
     }
 }
 
