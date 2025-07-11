@@ -13,12 +13,35 @@ async function loadSiteConfig() {
     try {
         console.log('🔧 加载站点配置...');
 
-        // 1. 首先检查是否有管理端保存的配置
+        // 1. 首先尝试从KV存储获取配置
+        try {
+            const kvResponse = await fetch('https://track-api.20990909.xyz/config/site', {
+                method: 'GET',
+                headers: {
+                    'Origin': window.location.origin,
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (kvResponse.ok) {
+                const kvData = await kvResponse.json();
+                if (kvData.siteConfig) {
+                    window.SITE_CONFIG = kvData.siteConfig;
+                    console.log('✅ 从KV存储加载配置成功:', window.SITE_CONFIG);
+                    applySiteConfig();
+                    return;
+                }
+            }
+        } catch (kvError) {
+            console.warn('⚠️ KV存储配置获取失败，尝试其他方式:', kvError);
+        }
+
+        // 2. 检查是否有管理端保存的配置（回退方案）
         const adminConfig = localStorage.getItem('pgs_admin_config');
         if (adminConfig) {
             try {
                 window.SITE_CONFIG = JSON.parse(adminConfig);
-                console.log('✅ 使用管理端配置:', window.SITE_CONFIG);
+                console.log('✅ 使用管理端本地配置:', window.SITE_CONFIG);
                 applySiteConfig();
                 return;
             } catch (error) {
@@ -26,7 +49,7 @@ async function loadSiteConfig() {
             }
         }
 
-        // 2. 加载默认配置文件
+        // 3. 加载默认配置文件（最后回退）
         const response = await fetch('config/site-config.json');
         if (!response.ok) {
             throw new Error(`配置文件加载失败: ${response.status}`);
@@ -39,7 +62,7 @@ async function loadSiteConfig() {
         applySiteConfig();
 
     } catch (error) {
-        console.warn('⚠️ 配置文件加载失败，使用默认配置:', error);
+        console.warn('⚠️ 所有配置加载方式都失败，使用默认配置:', error);
 
         // 使用默认配置
         window.SITE_CONFIG = getDefaultSiteConfig();
