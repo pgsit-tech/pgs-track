@@ -670,7 +670,7 @@ async function handleSiteConfigGet(request, env) {
 
         // 从KV存储获取网站配置
         if (env.CONFIG_KV) {
-            const configData = await env.CONFIG_KV.get('site_config');
+            const configData = await env.CONFIG_KV.get('siteConfig');
 
             if (configData) {
                 return new Response(configData, {
