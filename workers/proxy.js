@@ -459,17 +459,31 @@ async function getDynamicCompanyConfigs(env) {
     }
 
     try {
-        // 1. 尝试从KV存储获取配置
+        // 1. 尝试从KV存储获取完整站点配置
         if (env.CONFIG_KV) {
-            const configData = await env.CONFIG_KV.get('company_configs');
-            if (configData) {
-                DYNAMIC_COMPANY_CONFIGS = JSON.parse(configData);
-                console.log('✅ 从KV存储加载公司配置');
-                return DYNAMIC_COMPANY_CONFIGS;
+            const siteConfigData = await env.CONFIG_KV.get('siteConfig');
+            if (siteConfigData) {
+                const siteConfig = JSON.parse(siteConfigData);
+                if (siteConfig.api && siteConfig.api.companies) {
+                    // 转换为Worker期望的格式
+                    DYNAMIC_COMPANY_CONFIGS = {};
+                    siteConfig.api.companies.forEach(company => {
+                        DYNAMIC_COMPANY_CONFIGS[company.id] = {
+                            name: company.name,
+                            appKey: company.appKey,
+                            appToken: company.appToken,
+                            priority: company.priority,
+                            enabled: company.enabled
+                        };
+                    });
+                    console.log('✅ 从KV存储加载公司配置:', Object.keys(DYNAMIC_COMPANY_CONFIGS));
+                    return DYNAMIC_COMPANY_CONFIGS;
+                }
             }
         }
 
-        // 2. 从环境变量构建配置
+        // 2. 从环境变量构建配置（回退方案）
+        console.log('⚠️ KV配置不存在，使用环境变量回退');
         DYNAMIC_COMPANY_CONFIGS = {
             company1: {
                 name: env.COMPANY1_NAME || '总公司',
@@ -546,7 +560,23 @@ async function handleConfigUpdate(request, env) {
 
         // 保存配置到KV存储
         if (env.CONFIG_KV) {
-            await env.CONFIG_KV.put('company_configs', JSON.stringify(configData.companies));
+            // 获取现有的完整站点配置
+            let siteConfig = {};
+            try {
+                const existingConfig = await env.CONFIG_KV.get('siteConfig');
+                if (existingConfig) {
+                    siteConfig = JSON.parse(existingConfig);
+                }
+            } catch (e) {
+                console.log('获取现有配置失败，使用空配置');
+            }
+
+            // 更新API配置部分
+            if (!siteConfig.api) siteConfig.api = {};
+            siteConfig.api.companies = configData.companies;
+
+            // 保存完整配置
+            await env.CONFIG_KV.put('siteConfig', JSON.stringify(siteConfig));
 
             // 清除缓存，强制重新加载
             DYNAMIC_COMPANY_CONFIGS = null;
