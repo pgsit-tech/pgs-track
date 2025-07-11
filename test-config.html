@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>配置测试页面</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .config-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>配置加载测试</h1>
+    
+    <div id="status" class="config-section">
+        <h3>加载状态</h3>
+        <p id="statusText">正在加载配置...</p>
+    </div>
+    
+    <div id="kvConfig" class="config-section">
+        <h3>KV存储配置</h3>
+        <pre id="kvConfigData">加载中...</pre>
+    </div>
+    
+    <div id="fileConfig" class="config-section">
+        <h3>文件配置</h3>
+        <pre id="fileConfigData">加载中...</pre>
+    </div>
+    
+    <div id="finalConfig" class="config-section">
+        <h3>最终使用的配置</h3>
+        <pre id="finalConfigData">加载中...</pre>
+    </div>
+
+    <script>
+        async function testConfigLoading() {
+            const statusEl = document.getElementById('status');
+            const statusTextEl = document.getElementById('statusText');
+            const kvConfigEl = document.getElementById('kvConfigData');
+            const fileConfigEl = document.getElementById('fileConfigData');
+            const finalConfigEl = document.getElementById('finalConfigData');
+            
+            let finalConfig = null;
+            
+            // 1. 测试KV存储配置
+            try {
+                statusTextEl.textContent = '正在从KV存储加载配置...';
+                
+                const kvResponse = await fetch('https://track-api.20990909.xyz/config/site', {
+                    method: 'GET',
+                    headers: {
+                        'Origin': window.location.origin,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (kvResponse.ok) {
+                    const kvData = await kvResponse.json();
+                    kvConfigEl.textContent = JSON.stringify(kvData, null, 2);
+                    
+                    if (kvData.siteConfig) {
+                        finalConfig = kvData.siteConfig;
+                        statusTextEl.textContent = '✅ 成功从KV存储加载配置';
+                        statusEl.className = 'config-section success';
+                    }
+                } else {
+                    throw new Error(`KV请求失败: ${kvResponse.status}`);
+                }
+            } catch (kvError) {
+                kvConfigEl.textContent = `KV加载失败: ${kvError.message}`;
+                statusTextEl.textContent = '⚠️ KV存储加载失败，尝试文件配置...';
+                
+                // 2. 回退到文件配置
+                try {
+                    const fileResponse = await fetch('config/site-config.json');
+                    if (fileResponse.ok) {
+                        const fileData = await fileResponse.json();
+                        fileConfigEl.textContent = JSON.stringify(fileData, null, 2);
+                        finalConfig = fileData;
+                        statusTextEl.textContent = '✅ 使用文件配置作为回退';
+                        statusEl.className = 'config-section success';
+                    } else {
+                        throw new Error(`文件请求失败: ${fileResponse.status}`);
+                    }
+                } catch (fileError) {
+                    fileConfigEl.textContent = `文件加载失败: ${fileError.message}`;
+                    statusTextEl.textContent = '❌ 所有配置加载方式都失败';
+                    statusEl.className = 'config-section error';
+                }
+            }
+            
+            // 显示最终配置
+            if (finalConfig) {
+                finalConfigEl.textContent = JSON.stringify(finalConfig, null, 2);
+                
+                // 显示关键信息
+                const companyName = finalConfig.api?.companies?.[0]?.name || '未知';
+                const fullName = finalConfig.branding?.companyFullName || '未知';
+                
+                statusTextEl.innerHTML += `<br><br><strong>公司名称:</strong> ${companyName}<br><strong>完整名称:</strong> ${fullName}`;
+            } else {
+                finalConfigEl.textContent = '无可用配置';
+            }
+        }
+        
+        // 页面加载完成后开始测试
+        document.addEventListener('DOMContentLoaded', testConfigLoading);
+    </script>
+</body>
+</html>
