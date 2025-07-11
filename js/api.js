@@ -30,7 +30,7 @@ const API_CONFIG = {
         }
 
         // 生产环境优先使用直接API调用
-        if (hostname.includes('pages.dev') || hostname.includes('your-domain.com')) {
+        if (hostname.includes('pages.dev') || hostname.includes('pgs-cbel.com')) {
             console.log('🎯 生产环境，使用直接API调用 ws.ai-ops.vip');
             return 'https://ws.ai-ops.vip/edi/web-services';
         }
