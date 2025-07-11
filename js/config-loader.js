@@ -12,21 +12,35 @@ window.SITE_CONFIG = {};
 async function loadSiteConfig() {
     try {
         console.log('🔧 加载站点配置...');
-        
+
+        // 1. 首先检查是否有管理端保存的配置
+        const adminConfig = localStorage.getItem('pgs_admin_config');
+        if (adminConfig) {
+            try {
+                window.SITE_CONFIG = JSON.parse(adminConfig);
+                console.log('✅ 使用管理端配置:', window.SITE_CONFIG);
+                applySiteConfig();
+                return;
+            } catch (error) {
+                console.warn('⚠️ 管理端配置解析失败，尝试加载文件配置:', error);
+            }
+        }
+
+        // 2. 加载默认配置文件
         const response = await fetch('config/site-config.json');
         if (!response.ok) {
             throw new Error(`配置文件加载失败: ${response.status}`);
         }
-        
+
         window.SITE_CONFIG = await response.json();
-        console.log('✅ 站点配置加载成功:', window.SITE_CONFIG);
-        
+        console.log('✅ 站点配置文件加载成功:', window.SITE_CONFIG);
+
         // 应用配置到页面
         applySiteConfig();
-        
+
     } catch (error) {
         console.warn('⚠️ 配置文件加载失败，使用默认配置:', error);
-        
+
         // 使用默认配置
         window.SITE_CONFIG = getDefaultSiteConfig();
         applySiteConfig();

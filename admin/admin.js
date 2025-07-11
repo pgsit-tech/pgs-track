@@ -153,8 +153,11 @@ function saveSiteConfig() {
         author: document.getElementById('siteAuthor').value,
         version: siteConfig.site?.version || "1.0.0"
     };
-    
-    showToast('网站配置已保存', 'success');
+
+    // 立即应用配置
+    applyConfigToSession();
+
+    showToast('网站配置已保存并应用', 'success');
     console.log('网站配置已更新:', siteConfig.site);
 }
 
@@ -180,8 +183,11 @@ function saveBrandingConfig() {
         companyName: document.getElementById('companyName').value,
         companyFullName: document.getElementById('companyFullName').value
     };
-    
-    showToast('品牌设置已保存', 'success');
+
+    // 立即应用配置
+    applyConfigToSession();
+
+    showToast('品牌设置已保存并应用', 'success');
     console.log('品牌设置已更新:', siteConfig.branding);
 }
 
@@ -325,7 +331,10 @@ function updateCompany(index, field, value) {
 }
 
 function saveAPIConfig() {
-    showToast('API配置已保存', 'success');
+    // 立即应用配置
+    applyConfigToSession();
+
+    showToast('API配置已保存并应用', 'success');
     console.log('API配置已更新:', siteConfig.api);
 }
 
@@ -488,6 +497,60 @@ function resetHelpConfig() {
 }
 
 // ===================================
+// 配置应用辅助函数
+// ===================================
+
+/**
+ * 立即应用配置到当前会话
+ */
+function applyConfigToSession() {
+    try {
+        // 保存到localStorage
+        localStorage.setItem('pgs_admin_config', JSON.stringify(siteConfig));
+
+        // 更新全局配置
+        window.SITE_CONFIG = siteConfig;
+
+        // 刷新预览
+        refreshPreview();
+
+        // 更新状态指示器
+        updateConfigStatus('applied');
+
+        console.log('✅ 配置已应用到当前会话');
+    } catch (error) {
+        console.error('应用配置到会话失败:', error);
+        updateConfigStatus('error');
+    }
+}
+
+/**
+ * 更新配置状态指示器
+ */
+function updateConfigStatus(status) {
+    const statusElement = document.getElementById('configStatus');
+    if (!statusElement) return;
+
+    switch (status) {
+        case 'applied':
+            statusElement.className = 'badge bg-success';
+            statusElement.innerHTML = '<i class="fas fa-check me-1"></i>已应用';
+            break;
+        case 'pending':
+            statusElement.className = 'badge bg-warning';
+            statusElement.innerHTML = '<i class="fas fa-clock me-1"></i>待应用';
+            break;
+        case 'error':
+            statusElement.className = 'badge bg-danger';
+            statusElement.innerHTML = '<i class="fas fa-exclamation me-1"></i>错误';
+            break;
+        default:
+            statusElement.className = 'badge bg-secondary';
+            statusElement.innerHTML = '<i class="fas fa-clock me-1"></i>未应用';
+    }
+}
+
+// ===================================
 // 预览和导出功能
 // ===================================
 
@@ -500,21 +563,74 @@ function downloadConfig() {
     const configJson = JSON.stringify(siteConfig, null, 2);
     const blob = new Blob([configJson], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    
+
     const a = document.createElement('a');
     a.href = url;
     a.download = 'site-config.json';
     a.click();
-    
+
     URL.revokeObjectURL(url);
     showToast('配置文件已下载', 'success');
 }
 
-function applyConfig() {
-    // 这里可以实现配置应用逻辑
-    // 在实际部署中，需要将配置保存到服务器或更新静态文件
-    showToast('配置已应用（需要重新部署生效）', 'info');
-    console.log('应用配置:', siteConfig);
+/**
+ * 实时预览配置效果
+ */
+function previewConfig() {
+    // 确保配置已应用到当前会话
+    applyConfigToSession();
+
+    // 在新标签页中打开首页
+    const previewUrl = window.location.origin + '/index.html';
+    window.open(previewUrl, '_blank');
+
+    showToast('已在新标签页中打开预览', 'info');
+}
+
+async function applyConfig() {
+    try {
+        // 1. 保存配置到localStorage作为临时存储
+        localStorage.setItem('pgs_admin_config', JSON.stringify(siteConfig));
+
+        // 2. 更新当前页面的配置
+        window.SITE_CONFIG = siteConfig;
+
+        // 3. 通知前端页面配置已更新
+        if (window.ConfigLoader && typeof window.ConfigLoader.applySiteConfig === 'function') {
+            window.ConfigLoader.applySiteConfig();
+        }
+
+        // 4. 生成配置文件供下载
+        const configJson = JSON.stringify(siteConfig, null, 2);
+        const blob = new Blob([configJson], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+
+        // 5. 创建下载链接
+        const downloadLink = document.createElement('a');
+        downloadLink.href = url;
+        downloadLink.download = 'site-config.json';
+        downloadLink.style.display = 'none';
+        document.body.appendChild(downloadLink);
+
+        // 6. 显示应用成功消息和下载提示
+        showToast('配置已应用到当前会话！', 'success');
+
+        // 7. 延迟显示下载提示
+        setTimeout(() => {
+            if (confirm('配置已应用到当前会话。\n\n要使配置永久生效，需要下载配置文件并替换 config/site-config.json。\n\n是否现在下载配置文件？')) {
+                downloadLink.click();
+                showToast('请将下载的文件替换 config/site-config.json', 'info');
+            }
+            document.body.removeChild(downloadLink);
+            URL.revokeObjectURL(url);
+        }, 1000);
+
+        console.log('✅ 配置已应用:', siteConfig);
+
+    } catch (error) {
+        console.error('应用配置失败:', error);
+        showToast('配置应用失败', 'error');
+    }
 }
 
 // ===================================
@@ -594,7 +710,10 @@ function saveFooterConfig() {
         additionalInfo: `技术支持: ${document.getElementById('supportEmail').value} | 服务热线: ${document.getElementById('supportPhone').value}`
     };
 
-    showToast('页脚配置已保存', 'success');
+    // 立即应用配置
+    applyConfigToSession();
+
+    showToast('页脚配置已保存并应用', 'success');
     console.log('页脚配置已更新:', siteConfig.footer);
 }
 
