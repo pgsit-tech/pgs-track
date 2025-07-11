@@ -633,7 +633,7 @@ async function handleSiteConfigUpdate(request, env) {
 
         // 保存网站配置到KV存储
         if (env.CONFIG_KV) {
-            await env.CONFIG_KV.put('site_config', JSON.stringify(configData));
+            await env.CONFIG_KV.put('siteConfig', JSON.stringify(configData));
 
             return new Response(JSON.stringify({
                 success: true,
@@ -670,7 +670,9 @@ async function handleSiteConfigGet(request, env) {
 
         // 从KV存储获取网站配置
         if (env.CONFIG_KV) {
+            console.log('KV绑定存在，尝试获取siteConfig');
             const configData = await env.CONFIG_KV.get('siteConfig');
+            console.log('KV获取结果:', configData ? '有数据' : '无数据');
 
             if (configData) {
                 return new Response(configData, {
@@ -683,6 +685,7 @@ async function handleSiteConfigGet(request, env) {
                     }
                 });
             } else {
+                console.log('KV中没有找到siteConfig数据');
                 return new Response(JSON.stringify({
                     error: '网站配置不存在'
                 }), {

@@ -53,13 +53,19 @@ $WorkerUrl = "https://track-api.20990909.xyz"
 Write-Host "`n⏳ 等待Worker部署完成..." -ForegroundColor Yellow
 Start-Sleep -Seconds 10
 
-# 恢复站点配置
+# 恢复站点配置到KV存储（使用wrangler直接操作）
 Write-Host "`n🔧 恢复站点配置到KV存储..." -ForegroundColor Cyan
 try {
-    $jsonBody = $CBELConfig | ConvertTo-Json -Depth 10
-    $response = Invoke-RestMethod -Uri "$WorkerUrl/config/site" -Method POST -Body $jsonBody -ContentType "application/json" -Headers @{
-        "Origin" = "https://pgs-track.pages.dev"
-    }
+    # 创建临时配置文件
+    $tempConfigFile = "temp-cbel-config.json"
+    $CBELConfig.siteConfig | ConvertTo-Json -Depth 10 | Out-File -FilePath $tempConfigFile -Encoding UTF8
+
+    # 使用wrangler直接写入远程KV
+    $result = wrangler kv key put "siteConfig" --namespace-id "c1e7e2d1abff4140970ffa1c7c98cf22" --path $tempConfigFile --remote
+
+    # 清理临时文件
+    Remove-Item $tempConfigFile -ErrorAction SilentlyContinue
+
     Write-Host "✅ 站点配置恢复成功" -ForegroundColor Green
 } catch {
     Write-Host "❌ 站点配置恢复失败: $($_.Exception.Message)" -ForegroundColor Red
