@@ -751,9 +751,8 @@ function getWorkerProxyUrl() {
  * 获取管理员Token
  */
 function getAdminToken() {
-    // 这里可以从localStorage或其他地方获取token
-    // 暂时使用简单的token
-    return 'admin-token-here';
+    // 使用与Worker中设置的相同token
+    return 'admin-token-pgs-2025';
 }
 
 async function applyConfig() {
