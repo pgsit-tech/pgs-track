@@ -81,6 +81,16 @@ function updateWorkerStatus(status, companyCount = 0) {
 }
 
 /**
+ * SHA256哈希函数
+ */
+async function sha256(message) {
+    const msgBuffer = new TextEncoder().encode(message);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
  * 修改管理员密码
  */
 async function changeAdminPassword(currentPassword, newPassword) {
@@ -120,17 +130,28 @@ async function changeAdminPassword(currentPassword, newPassword) {
 async function validatePassword(password) {
     try {
         const passwordHash = await sha256(password);
+        console.log('🔍 密码验证调试信息:');
+        console.log('输入密码:', password);
+        console.log('计算哈希:', passwordHash);
 
         // 检查localStorage中的配置
         const savedConfig = localStorage.getItem('pgs_admin_credentials');
         if (savedConfig) {
             const config = JSON.parse(savedConfig);
-            return passwordHash === config.passwordHash;
+            console.log('使用自定义密码配置');
+            console.log('存储哈希:', config.passwordHash);
+            const isValid = passwordHash === config.passwordHash;
+            console.log('验证结果:', isValid);
+            return isValid;
         }
 
         // 检查默认密码 (admin123)
         const defaultHash = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9';
-        return passwordHash === defaultHash;
+        console.log('使用默认密码配置');
+        console.log('默认哈希:', defaultHash);
+        const isValid = passwordHash === defaultHash;
+        console.log('验证结果:', isValid);
+        return isValid;
     } catch (error) {
         console.error('密码验证失败:', error);
         return false;
@@ -150,6 +171,53 @@ function updateSecurityInfo() {
     }
 }
 
+/**
+ * 更新密码强度显示
+ */
+function updatePasswordStrength(password) {
+    const strengthElement = document.getElementById('passwordStrength');
+    if (!strengthElement) return;
+
+    if (!password) {
+        strengthElement.textContent = '未设置';
+        strengthElement.className = 'badge bg-secondary';
+        return;
+    }
+
+    let strength = 0;
+    let strengthText = '';
+    let strengthClass = '';
+
+    // 长度检查
+    if (password.length >= 6) strength += 1;
+    if (password.length >= 8) strength += 1;
+    if (password.length >= 12) strength += 1;
+
+    // 复杂度检查
+    if (/[a-z]/.test(password)) strength += 1; // 小写字母
+    if (/[A-Z]/.test(password)) strength += 1; // 大写字母
+    if (/[0-9]/.test(password)) strength += 1; // 数字
+    if (/[^a-zA-Z0-9]/.test(password)) strength += 1; // 特殊字符
+
+    // 根据强度设置显示
+    if (strength <= 2) {
+        strengthText = '弱';
+        strengthClass = 'bg-danger';
+    } else if (strength <= 4) {
+        strengthText = '中等';
+        strengthClass = 'bg-warning';
+    } else if (strength <= 6) {
+        strengthText = '强';
+        strengthClass = 'bg-success';
+    } else {
+        strengthText = '很强';
+        strengthClass = 'bg-success';
+    }
+
+    strengthElement.textContent = strengthText;
+    strengthElement.className = `badge ${strengthClass}`;
+}
+
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🔧 管理后台初始化...');
@@ -167,29 +235,64 @@ document.addEventListener('DOMContentLoaded', function() {
     // 更新安全信息
     updateSecurityInfo();
 
+    // 绑定密码强度检测
+    const newPasswordInput = document.getElementById('newPassword');
+    if (newPasswordInput) {
+        newPasswordInput.addEventListener('input', function() {
+            updatePasswordStrength(this.value);
+        });
+    }
+
     // 绑定密码修改表单
     const changePasswordForm = document.getElementById('changePasswordForm');
     if (changePasswordForm) {
         changePasswordForm.addEventListener('submit', async function(e) {
             e.preventDefault();
 
-            const currentPassword = document.getElementById('currentPassword').value;
-            const newPassword = document.getElementById('newPassword').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
+            const currentPassword = document.getElementById('currentPassword').value.trim();
+            const newPassword = document.getElementById('newPassword').value.trim();
+            const confirmPassword = document.getElementById('confirmPassword').value.trim();
 
-            if (newPassword !== confirmPassword) {
-                showToast('新密码和确认密码不匹配', 'error');
+            // 基本验证
+            if (!currentPassword) {
+                showToast('请输入当前密码', 'warning');
+                document.getElementById('currentPassword').focus();
+                return;
+            }
+
+            if (!newPassword) {
+                showToast('请输入新密码', 'warning');
+                document.getElementById('newPassword').focus();
                 return;
             }
 
             if (newPassword.length < 6) {
                 showToast('新密码长度至少6位', 'error');
+                document.getElementById('newPassword').focus();
                 return;
             }
 
+            if (newPassword !== confirmPassword) {
+                showToast('新密码和确认密码不匹配', 'error');
+                document.getElementById('confirmPassword').focus();
+                return;
+            }
+
+            if (currentPassword === newPassword) {
+                showToast('新密码不能与当前密码相同', 'warning');
+                document.getElementById('newPassword').focus();
+                return;
+            }
+
+            // 显示加载状态
+            const submitBtn = changePasswordForm.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>修改中...';
+            submitBtn.disabled = true;
+
             try {
                 await changeAdminPassword(currentPassword, newPassword);
-                showToast('密码修改成功', 'success');
+                showToast('密码修改成功！请重新登录', 'success');
 
                 // 清空表单
                 changePasswordForm.reset();
@@ -203,8 +306,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     strengthElement.className = `badge ${className}`;
                 }
 
+                // 3秒后跳转到登录页面
+                setTimeout(() => {
+                    window.location.href = 'auth.html';
+                }, 3000);
+
             } catch (error) {
+                console.error('密码修改错误:', error);
                 showToast(error.message || '密码修改失败', 'error');
+            } finally {
+                // 恢复按钮状态
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
             }
         });
     }
