@@ -18,26 +18,42 @@ async function checkWorkerStatus() {
 
         updateWorkerStatus('检查中...');
 
-        // 检查Worker是否可访问
+        // 检查Worker是否可访问，添加超时控制
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+
         const response = await fetch(`${workerUrl}/config/companies`, {
             method: 'GET',
             headers: {
-                'Origin': window.location.origin
-            }
+                'Origin': window.location.origin,
+                'Accept': 'application/json'
+            },
+            signal: controller.signal
         });
+
+        clearTimeout(timeoutId);
 
         if (response.ok) {
             const configs = await response.json();
-            updateWorkerStatus('正常', Object.keys(configs).length);
-            console.log('✅ Worker状态正常，公司配置数量:', Object.keys(configs).length);
+            const companyCount = Object.keys(configs).length;
+            updateWorkerStatus('正常', companyCount);
+            console.log('✅ Worker状态正常，公司配置数量:', companyCount);
+        } else if (response.status === 404) {
+            updateWorkerStatus('配置缺失');
+            console.warn('⚠️ Worker配置API不存在，可能需要重新部署');
         } else {
             updateWorkerStatus('异常');
-            console.warn('⚠️ Worker响应异常:', response.status);
+            console.warn('⚠️ Worker响应异常:', response.status, response.statusText);
         }
 
     } catch (error) {
-        updateWorkerStatus('离线');
-        console.error('❌ Worker状态检查失败:', error);
+        if (error.name === 'AbortError') {
+            updateWorkerStatus('超时');
+            console.warn('⚠️ Worker状态检查超时');
+        } else {
+            updateWorkerStatus('离线');
+            console.warn('⚠️ Worker状态检查失败:', error.message);
+        }
     }
 }
 
@@ -65,6 +81,14 @@ function updateWorkerStatus(status, companyCount = 0) {
         case '离线':
             className = 'badge bg-danger';
             icon = 'fas fa-times-circle';
+            break;
+        case '超时':
+            className = 'badge bg-warning';
+            icon = 'fas fa-clock';
+            break;
+        case '配置缺失':
+            className = 'badge bg-warning';
+            icon = 'fas fa-cogs';
             break;
         case '检查中...':
             className = 'badge bg-info';
@@ -229,8 +253,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // 初始化预览
     setTimeout(refreshPreview, 500);
 
-    // 检查Worker状态
-    setTimeout(checkWorkerStatus, 1000);
+    // 延迟检查Worker状态，避免页面加载时立即触发404错误
+    setTimeout(checkWorkerStatus, 3000);
 
     // 更新安全信息
     updateSecurityInfo();
@@ -971,8 +995,8 @@ function getWorkerProxyUrl() {
         return window.WORKERS_PROXY_URL;
     }
 
-    // 使用默认配置
-    return 'https://track-api.20990909.xyz/api/au-ops';
+    // 使用正确的Worker域名
+    return 'https://track-api.20990909.xyz';
 }
 
 /**
