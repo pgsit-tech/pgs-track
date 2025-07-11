@@ -17,6 +17,9 @@ const AU_OPS_CONFIG = {
     timeout: 30000
 };
 
+// 动态公司配置 - 从KV存储或环境变量获取
+let DYNAMIC_COMPANY_CONFIGS = null;
+
 // 允许的来源域名（CORS配置）
 const ALLOWED_ORIGINS = [
     'http://localhost:8080',
@@ -445,8 +448,155 @@ function createErrorResponse(message, status = 400) {
 // Workers事件监听器
 // ===================================
 
+/**
+ * 获取动态公司配置
+ * @param {Object} env - 环境变量
+ * @returns {Object} 公司配置
+ */
+async function getDynamicCompanyConfigs(env) {
+    if (DYNAMIC_COMPANY_CONFIGS) {
+        return DYNAMIC_COMPANY_CONFIGS;
+    }
+
+    try {
+        // 1. 尝试从KV存储获取配置
+        if (env.CONFIG_KV) {
+            const configData = await env.CONFIG_KV.get('company_configs');
+            if (configData) {
+                DYNAMIC_COMPANY_CONFIGS = JSON.parse(configData);
+                console.log('✅ 从KV存储加载公司配置');
+                return DYNAMIC_COMPANY_CONFIGS;
+            }
+        }
+
+        // 2. 从环境变量构建配置
+        DYNAMIC_COMPANY_CONFIGS = {
+            company1: {
+                name: env.COMPANY1_NAME || '总公司',
+                appKey: env.COMPANY1_APP_KEY,
+                appToken: env.COMPANY1_APP_TOKEN,
+                priority: 1,
+                enabled: true
+            }
+        };
+
+        // 添加其他公司配置（如果存在）
+        if (env.COMPANY2_APP_KEY) {
+            DYNAMIC_COMPANY_CONFIGS.company2 = {
+                name: env.COMPANY2_NAME || '分公司A',
+                appKey: env.COMPANY2_APP_KEY,
+                appToken: env.COMPANY2_APP_TOKEN,
+                priority: 2,
+                enabled: true
+            };
+        }
+
+        if (env.COMPANY3_APP_KEY) {
+            DYNAMIC_COMPANY_CONFIGS.company3 = {
+                name: env.COMPANY3_NAME || '分公司B',
+                appKey: env.COMPANY3_APP_KEY,
+                appToken: env.COMPANY3_APP_TOKEN,
+                priority: 3,
+                enabled: true
+            };
+        }
+
+        console.log('✅ 从环境变量构建公司配置');
+        return DYNAMIC_COMPANY_CONFIGS;
+
+    } catch (error) {
+        console.error('❌ 获取动态配置失败:', error);
+
+        // 返回默认配置
+        return {
+            company1: {
+                name: '总公司',
+                appKey: env.COMPANY1_APP_KEY || env.APP_KEY,
+                appToken: env.COMPANY1_APP_TOKEN || env.APP_TOKEN,
+                priority: 1,
+                enabled: true
+            }
+        };
+    }
+}
+
+/**
+ * 处理配置更新请求
+ * @param {Request} request - 请求对象
+ * @param {Object} env - 环境变量
+ * @returns {Response} 响应对象
+ */
+async function handleConfigUpdate(request, env) {
+    try {
+        // 验证请求来源
+        const origin = request.headers.get('Origin');
+        if (!ALLOWED_ORIGINS.includes(origin)) {
+            return createErrorResponse('未授权的请求来源', 403);
+        }
+
+        // 验证管理员权限（简单的token验证）
+        const authToken = request.headers.get('Authorization');
+        const expectedToken = env.ADMIN_TOKEN || 'admin-token-here';
+
+        if (!authToken || authToken !== `Bearer ${expectedToken}`) {
+            return createErrorResponse('未授权的操作', 401);
+        }
+
+        const configData = await request.json();
+
+        // 保存配置到KV存储
+        if (env.CONFIG_KV) {
+            await env.CONFIG_KV.put('company_configs', JSON.stringify(configData.companies));
+
+            // 清除缓存，强制重新加载
+            DYNAMIC_COMPANY_CONFIGS = null;
+
+            return new Response(JSON.stringify({
+                success: true,
+                message: '配置更新成功',
+                timestamp: new Date().toISOString()
+            }), {
+                status: 200,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': origin,
+                    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+                }
+            });
+        } else {
+            return createErrorResponse('KV存储未配置', 500);
+        }
+
+    } catch (error) {
+        console.error('配置更新失败:', error);
+        return createErrorResponse('配置更新失败', 500);
+    }
+}
+
 export default {
     async fetch(request, env, ctx) {
+        const url = new URL(request.url);
+
+        // 处理配置更新请求
+        if (url.pathname === '/config/update' && request.method === 'POST') {
+            return handleConfigUpdate(request, env);
+        }
+
+        // 处理配置获取请求
+        if (url.pathname === '/config/companies' && request.method === 'GET') {
+            const configs = await getDynamicCompanyConfigs(env);
+            return new Response(JSON.stringify(configs), {
+                status: 200,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': request.headers.get('Origin') || '*',
+                    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type'
+                }
+            });
+        }
+
         return handleRequest(request, env);
     }
 };

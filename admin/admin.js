@@ -5,11 +5,96 @@
 // 全局配置对象
 let siteConfig = {};
 
+/**
+ * 检查Worker状态
+ */
+async function checkWorkerStatus() {
+    try {
+        const workerUrl = getWorkerProxyUrl();
+        if (!workerUrl) {
+            updateWorkerStatus('未配置');
+            return;
+        }
+
+        updateWorkerStatus('检查中...');
+
+        // 检查Worker是否可访问
+        const response = await fetch(`${workerUrl}/config/companies`, {
+            method: 'GET',
+            headers: {
+                'Origin': window.location.origin
+            }
+        });
+
+        if (response.ok) {
+            const configs = await response.json();
+            updateWorkerStatus('正常', Object.keys(configs).length);
+            console.log('✅ Worker状态正常，公司配置数量:', Object.keys(configs).length);
+        } else {
+            updateWorkerStatus('异常');
+            console.warn('⚠️ Worker响应异常:', response.status);
+        }
+
+    } catch (error) {
+        updateWorkerStatus('离线');
+        console.error('❌ Worker状态检查失败:', error);
+    }
+}
+
+/**
+ * 更新Worker状态显示
+ */
+function updateWorkerStatus(status, companyCount = 0) {
+    const statusElement = document.getElementById('workerStatus');
+    if (!statusElement) return;
+
+    let className = 'badge bg-secondary';
+    let icon = 'fas fa-question';
+    let text = status;
+
+    switch (status) {
+        case '正常':
+            className = 'badge bg-success';
+            icon = 'fas fa-check-circle';
+            text = `正常 (${companyCount}个公司)`;
+            break;
+        case '异常':
+            className = 'badge bg-warning';
+            icon = 'fas fa-exclamation-triangle';
+            break;
+        case '离线':
+            className = 'badge bg-danger';
+            icon = 'fas fa-times-circle';
+            break;
+        case '检查中...':
+            className = 'badge bg-info';
+            icon = 'fas fa-spinner fa-spin';
+            break;
+        case '未配置':
+            className = 'badge bg-secondary';
+            icon = 'fas fa-cog';
+            break;
+    }
+
+    statusElement.className = className;
+    statusElement.innerHTML = `<i class="${icon} me-1"></i>${text}`;
+}
+
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔧 管理后台初始化...');
+
     loadConfig();
     initializeColorPickers();
     initializeLogoPreview();
+
+    // 初始化预览
+    setTimeout(refreshPreview, 500);
+
+    // 检查Worker状态
+    setTimeout(checkWorkerStatus, 1000);
+
+    console.log('✅ 管理后台初始化完成');
 });
 
 // ===================================
@@ -330,11 +415,14 @@ function updateCompany(index, field, value) {
     }
 }
 
-function saveAPIConfig() {
+async function saveAPIConfig() {
     // 立即应用配置
     applyConfigToSession();
 
-    showToast('API配置已保存并应用', 'success');
+    // 同步配置到Worker
+    await syncConfigToWorker();
+
+    showToast('API配置已保存并同步到Worker', 'success');
     console.log('API配置已更新:', siteConfig.api);
 }
 
@@ -585,6 +673,87 @@ function previewConfig() {
     window.open(previewUrl, '_blank');
 
     showToast('已在新标签页中打开预览', 'info');
+}
+
+/**
+ * 同步配置到Worker
+ */
+async function syncConfigToWorker() {
+    try {
+        // 获取Worker代理URL
+        const workerUrl = getWorkerProxyUrl();
+        if (!workerUrl) {
+            console.warn('⚠️ Worker代理URL未配置，跳过同步');
+            return;
+        }
+
+        // 准备同步的配置数据
+        const configData = {
+            companies: {}
+        };
+
+        // 转换管理端配置格式为Worker格式
+        if (siteConfig.api && siteConfig.api.companies) {
+            siteConfig.api.companies.forEach((company, index) => {
+                if (company.enabled) {
+                    configData.companies[company.id] = {
+                        name: company.name,
+                        appKey: company.appKey || '',
+                        appToken: company.appToken || '',
+                        priority: company.priority || (index + 1),
+                        enabled: company.enabled
+                    };
+                }
+            });
+        }
+
+        // 发送配置到Worker
+        const response = await fetch(`${workerUrl}/config/update`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${getAdminToken()}`,
+                'Origin': window.location.origin
+            },
+            body: JSON.stringify(configData)
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            console.log('✅ Worker配置同步成功:', result);
+            showToast('Worker配置同步成功', 'success');
+        } else {
+            const error = await response.text();
+            console.error('❌ Worker配置同步失败:', error);
+            showToast('Worker配置同步失败', 'warning');
+        }
+
+    } catch (error) {
+        console.error('❌ Worker配置同步异常:', error);
+        showToast('Worker配置同步异常', 'warning');
+    }
+}
+
+/**
+ * 获取Worker代理URL
+ */
+function getWorkerProxyUrl() {
+    // 优先使用环境配置
+    if (window.WORKERS_PROXY_URL) {
+        return window.WORKERS_PROXY_URL;
+    }
+
+    // 使用默认配置
+    return 'https://track-api.20990909.xyz/api/au-ops';
+}
+
+/**
+ * 获取管理员Token
+ */
+function getAdminToken() {
+    // 这里可以从localStorage或其他地方获取token
+    // 暂时使用简单的token
+    return 'admin-token-here';
 }
 
 async function applyConfig() {
