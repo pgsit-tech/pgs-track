@@ -387,23 +387,37 @@ function showSection(sectionId) {
 // ===================================
 
 async function loadConfig() {
+    console.log('🔄 开始加载配置...');
+
     try {
         // 优先从KV存储加载
         const kvConfig = await loadConfigFromKV();
-        if (kvConfig) {
+        if (kvConfig && Object.keys(kvConfig).length > 0) {
             siteConfig = kvConfig;
-            console.log('✅ 从KV存储加载配置成功');
+            console.log('✅ 使用KV存储配置');
         } else {
+            console.log('⚠️ KV存储无配置，尝试本地文件...');
             // 回退到本地JSON文件
             try {
                 const response = await fetch('../config/site-config.json');
-                siteConfig = await response.json();
-                console.log('✅ 从本地文件加载配置成功');
+                if (response.ok) {
+                    siteConfig = await response.json();
+                    console.log('✅ 使用本地文件配置');
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
             } catch (fileError) {
-                console.warn('⚠️ 本地配置文件也加载失败，使用默认配置:', fileError);
+                console.warn('⚠️ 本地配置文件加载失败，使用默认配置:', fileError.message);
                 siteConfig = getDefaultConfig();
+                console.log('✅ 使用默认配置');
             }
         }
+
+        // 确保配置完整性
+        if (!siteConfig.site) siteConfig.site = getDefaultConfig().site;
+        if (!siteConfig.branding) siteConfig.branding = getDefaultConfig().branding;
+        if (!siteConfig.footer) siteConfig.footer = getDefaultConfig().footer;
+        if (!siteConfig.api) siteConfig.api = getDefaultConfig().api || { companies: [] };
 
         // 填充表单数据
         populateForm();
@@ -414,12 +428,21 @@ async function loadConfig() {
         // 渲染API配置
         renderCompaniesConfig();
 
-        console.log('✅ 配置加载完成');
+        console.log('✅ 配置加载完成，最终配置:', {
+            site: !!siteConfig.site,
+            branding: !!siteConfig.branding,
+            api: !!siteConfig.api,
+            footer: !!siteConfig.footer,
+            title: siteConfig.site?.title
+        });
+
     } catch (error) {
-        console.error('❌ 配置加载失败:', error);
+        console.error('❌ 配置加载异常:', error);
         siteConfig = getDefaultConfig();
         populateForm();
         renderFooterConfig();
+        renderCompaniesConfig();
+        console.log('✅ 使用默认配置（异常恢复）');
     }
 }
 
@@ -638,57 +661,120 @@ function initializeLogoPreview() {
 function renderCompaniesConfig() {
     const container = document.getElementById('companiesConfig');
     const companies = siteConfig.api?.companies || [];
-    
+
     let html = '';
     companies.forEach((company, index) => {
         html += `
             <div class="card mb-3">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0">公司 ${index + 1}</h6>
-                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeCompany(${index})">
+                    <h6 class="mb-0">
+                        <i class="fas fa-building me-2"></i>
+                        ${company.name || `公司 ${index + 1}`}
+                        <span class="badge ${company.enabled ? 'bg-success' : 'bg-secondary'} ms-2">
+                            ${company.enabled ? '启用' : '禁用'}
+                        </span>
+                    </h6>
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeCompany(${index})" title="删除公司">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label">公司名称</label>
-                            <input type="text" class="form-control" value="${company.name}" onchange="updateCompany(${index}, 'name', this.value)">
+                        <div class="col-md-4">
+                            <label class="form-label">
+                                <i class="fas fa-tag me-1"></i>公司ID
+                            </label>
+                            <input type="text" class="form-control" value="${company.id || ''}"
+                                   onchange="updateCompany(${index}, 'id', this.value)"
+                                   placeholder="例如: company1">
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label">优先级</label>
-                            <input type="number" class="form-control" value="${company.priority}" onchange="updateCompany(${index}, 'priority', parseInt(this.value))">
+                        <div class="col-md-4">
+                            <label class="form-label">
+                                <i class="fas fa-building me-1"></i>公司名称
+                            </label>
+                            <input type="text" class="form-control" value="${company.name || ''}"
+                                   onchange="updateCompany(${index}, 'name', this.value)"
+                                   placeholder="例如: 总公司">
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label">状态</label>
+                        <div class="col-md-2">
+                            <label class="form-label">
+                                <i class="fas fa-sort-numeric-up me-1"></i>优先级
+                            </label>
+                            <input type="number" class="form-control" value="${company.priority || 1}"
+                                   onchange="updateCompany(${index}, 'priority', parseInt(this.value))"
+                                   min="1" max="10">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">
+                                <i class="fas fa-toggle-on me-1"></i>状态
+                            </label>
                             <select class="form-select" onchange="updateCompany(${index}, 'enabled', this.value === 'true')">
                                 <option value="true" ${company.enabled ? 'selected' : ''}>启用</option>
                                 <option value="false" ${!company.enabled ? 'selected' : ''}>禁用</option>
                             </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">
+                                <i class="fas fa-key me-1"></i>App Key
+                                <small class="text-muted">(API应用密钥)</small>
+                            </label>
+                            <input type="text" class="form-control font-monospace" value="${company.appKey || ''}"
+                                   onchange="updateCompany(${index}, 'appKey', this.value)"
+                                   placeholder="输入API App Key">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">
+                                <i class="fas fa-shield-alt me-1"></i>App Token
+                                <small class="text-muted">(API访问令牌)</small>
+                            </label>
+                            <textarea class="form-control font-monospace" rows="3"
+                                      onchange="updateCompany(${index}, 'appToken', this.value)"
+                                      placeholder="输入API App Token">${company.appToken || ''}</textarea>
                         </div>
                     </div>
                 </div>
             </div>
         `;
     });
-    
+
+    if (companies.length === 0) {
+        html = `
+            <div class="text-center py-5">
+                <i class="fas fa-building fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">暂无API配置</h5>
+                <p class="text-muted">点击"添加公司"按钮开始配置API</p>
+            </div>
+        `;
+    }
+
     container.innerHTML = html;
 }
 
 function addCompany() {
     if (!siteConfig.api) siteConfig.api = {};
     if (!siteConfig.api.companies) siteConfig.api.companies = [];
-    
+
+    // 生成唯一的公司ID
+    const existingIds = siteConfig.api.companies.map(c => c.id);
+    let newId = `company${siteConfig.api.companies.length + 1}`;
+    let counter = siteConfig.api.companies.length + 1;
+    while (existingIds.includes(newId)) {
+        counter++;
+        newId = `company${counter}`;
+    }
+
     const newCompany = {
-        id: `company${siteConfig.api.companies.length + 1}`,
-        name: `分公司${siteConfig.api.companies.length + 1}`,
+        id: newId,
+        name: `公司${counter}`,
+        appKey: '',
+        appToken: '',
         priority: siteConfig.api.companies.length + 1,
         enabled: true
     };
-    
+
     siteConfig.api.companies.push(newCompany);
     renderCompaniesConfig();
-    showToast('公司已添加', 'success');
+    showToast('新公司配置已添加，请填写API信息', 'success');
 }
 
 function removeCompany(index) {
@@ -965,57 +1051,38 @@ async function loadConfigFromKV() {
             return null;
         }
 
-        // 并行加载网站配置和API配置
-        const [siteResponse, apiResponse] = await Promise.all([
-            fetch(`${workerUrl}/config/site`, {
-                method: 'GET',
-                headers: {
-                    'Origin': window.location.origin,
-                    'Accept': 'application/json'
-                }
-            }),
-            fetch(`${workerUrl}/config/companies`, {
-                method: 'GET',
-                headers: {
-                    'Origin': window.location.origin,
-                    'Accept': 'application/json'
-                }
-            })
-        ]);
+        console.log('🔄 开始从KV存储加载配置...');
 
-        let config = null;
+        // 加载网站配置（已包含API配置）
+        const response = await fetch(`${workerUrl}/config/site`, {
+            method: 'GET',
+            headers: {
+                'Origin': window.location.origin,
+                'Accept': 'application/json'
+            }
+        });
 
-        // 加载网站配置
-        if (siteResponse.ok) {
-            const siteData = await siteResponse.json();
-            config = siteData.siteConfig || {};
-            console.log('✅ 从KV存储加载网站配置成功');
-        } else if (siteResponse.status !== 404) {
-            console.warn('⚠️ 从KV加载网站配置失败:', siteResponse.status, siteResponse.statusText);
+        if (response.ok) {
+            const data = await response.json();
+            const config = data.siteConfig || {};
+
+            console.log('✅ 从KV存储加载配置成功');
+            console.log('📊 配置数据:', {
+                site: !!config.site,
+                branding: !!config.branding,
+                api: !!config.api,
+                footer: !!config.footer,
+                apiCompanies: config.api?.companies?.length || 0
+            });
+
+            return config;
+        } else if (response.status === 404) {
+            console.log('ℹ️ KV存储中没有配置数据');
+            return null;
+        } else {
+            console.warn('⚠️ 从KV加载配置失败:', response.status, response.statusText);
+            return null;
         }
-
-        // 加载API配置
-        if (apiResponse.ok) {
-            const apiData = await apiResponse.json();
-            if (!config) config = {};
-
-            // 转换Worker格式的API配置为管理端格式
-            config.api = {
-                companies: Object.entries(apiData).map(([id, company]) => ({
-                    id: id,
-                    name: company.name,
-                    appKey: company.appKey,
-                    appToken: company.appToken,
-                    priority: company.priority || 1,
-                    enabled: company.enabled !== false
-                }))
-            };
-            console.log('✅ 从KV存储加载API配置成功，公司数量:', config.api.companies.length);
-        } else if (apiResponse.status !== 404) {
-            console.warn('⚠️ 从KV加载API配置失败:', apiResponse.status, apiResponse.statusText);
-        }
-
-        return config;
 
     } catch (error) {
         console.error('❌ 从KV存储加载配置失败:', error);
