@@ -1,0 +1,37 @@
+{
+  "siteConfig": {
+    "site": {
+      "title": "PGS 物流轨迹查询系统",
+      "description": "专业的物流轨迹查询服务",
+      "keywords": "物流,轨迹,查询,PGS"
+    },
+    "branding": {
+      "primaryColor": "#007bff",
+      "secondaryColor": "#6c757d",
+      "logoUrl": "assets/logo.svg",
+      "faviconUrl": "assets/favicon.svg"
+    },
+    "api": {
+      "companies": [
+        {
+          "id": "company1",
+          "name": "CBEL",
+          "appKey": "baMccCbpHMZLTZksk5E2E^3KH#L9lvvf",
+          "appToken": "^tKm71iS7eKoQaKS5y5L8ZUDjvscOV9F#sSbGSsA6eQuMuMTfvI@yMx$dKXdZtKcVe#KycHvf8sg9oyc1inM#acvAycpD@85rbEeDZMn#EBa$c3bftirsaD_XAai5u7oWL$zgQajCl@zSojZNllxO^jpNAmJXHf0GD89LRE8I~4gm5VXmT2HS~mKS#ewOqoK~eoJhuH@v#7~$rQwGlRwCnt2nXKc$3m21#KBtI2tWIygHqW37zyLN0hMWxe_3yg",
+          "priority": 1,
+          "enabled": true
+        }
+      ]
+    },
+    "footer": {
+      "companyName": "PGS 物流科技有限公司",
+      "copyright": "© 2025 PGS 物流科技有限公司. 保留所有权利.",
+      "additionalInfo": "技术支持: support@pgs.com | 服务热线: 400-123-4567",
+      "links": [
+        {"text": "使用条款", "url": "#"},
+        {"text": "隐私政策", "url": "#"},
+        {"text": "联系我们", "url": "#"}
+      ]
+    }
+  }
+}
