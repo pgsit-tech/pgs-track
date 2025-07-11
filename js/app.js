@@ -1959,10 +1959,13 @@ function showQueryHistory() {
  * 填充单号到查询框
  */
 function fillTrackingNumber(trackingRef) {
-    const input = document.getElementById('trackingInput');
+    const input = document.getElementById('searchInput');
     if (input) {
         input.value = trackingRef;
         input.focus();
+        console.log('✅ 历史记录已填充到输入框:', trackingRef);
+    } else {
+        console.error('❌ 找不到输入框元素 #searchInput');
     }
 }
 
