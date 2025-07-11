@@ -246,16 +246,8 @@ function updatePasswordStrength(password) {
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('🔧 管理后台初始化...');
 
-    // 优先从KV存储加载配置
-    const kvConfig = await loadConfigFromKV();
-    if (kvConfig) {
-        siteConfig = kvConfig;
-        console.log('✅ 从KV存储加载配置成功');
-    } else {
-        // 回退到本地配置
-        loadConfig();
-        console.log('ℹ️ 使用本地配置');
-    }
+    // 加载配置（已包含KV优先逻辑）
+    await loadConfig();
 
     initializeColorPickers();
     initializeLogoPreview();
@@ -396,18 +388,35 @@ function showSection(sectionId) {
 
 async function loadConfig() {
     try {
-        const response = await fetch('../config/site-config.json');
-        siteConfig = await response.json();
-        
+        // 优先从KV存储加载
+        const kvConfig = await loadConfigFromKV();
+        if (kvConfig) {
+            siteConfig = kvConfig;
+            console.log('✅ 从KV存储加载配置成功');
+        } else {
+            // 回退到本地JSON文件
+            try {
+                const response = await fetch('../config/site-config.json');
+                siteConfig = await response.json();
+                console.log('✅ 从本地文件加载配置成功');
+            } catch (fileError) {
+                console.warn('⚠️ 本地配置文件也加载失败，使用默认配置:', fileError);
+                siteConfig = getDefaultConfig();
+            }
+        }
+
         // 填充表单数据
         populateForm();
-        
-        console.log('配置加载成功');
+
+        // 渲染页脚配置
+        renderFooterConfig();
+
+        console.log('✅ 配置加载完成');
     } catch (error) {
-        console.error('配置加载失败:', error);
-        // 使用默认配置
+        console.error('❌ 配置加载失败:', error);
         siteConfig = getDefaultConfig();
         populateForm();
+        renderFooterConfig();
     }
 }
 
