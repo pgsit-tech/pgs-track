@@ -80,6 +80,76 @@ function updateWorkerStatus(status, companyCount = 0) {
     statusElement.innerHTML = `<i class="${icon} me-1"></i>${text}`;
 }
 
+/**
+ * 修改管理员密码
+ */
+async function changeAdminPassword(currentPassword, newPassword) {
+    try {
+        // 验证当前密码
+        const isCurrentValid = await validatePassword(currentPassword);
+        if (!isCurrentValid) {
+            throw new Error('当前密码错误');
+        }
+
+        // 生成新密码哈希
+        const newPasswordHash = await sha256(newPassword);
+
+        // 更新密码配置
+        const adminConfig = {
+            username: 'admin',
+            passwordHash: newPasswordHash
+        };
+
+        // 保存到localStorage
+        localStorage.setItem('pgs_admin_credentials', JSON.stringify(adminConfig));
+
+        // 更新AUTH_CONFIG
+        window.AUTH_CONFIG = window.AUTH_CONFIG || {};
+        window.AUTH_CONFIG.admin = adminConfig;
+
+        return true;
+    } catch (error) {
+        console.error('密码修改失败:', error);
+        throw error;
+    }
+}
+
+/**
+ * 验证密码
+ */
+async function validatePassword(password) {
+    try {
+        const passwordHash = await sha256(password);
+
+        // 检查localStorage中的配置
+        const savedConfig = localStorage.getItem('pgs_admin_credentials');
+        if (savedConfig) {
+            const config = JSON.parse(savedConfig);
+            return passwordHash === config.passwordHash;
+        }
+
+        // 检查默认密码 (admin123)
+        const defaultHash = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9';
+        return passwordHash === defaultHash;
+    } catch (error) {
+        console.error('密码验证失败:', error);
+        return false;
+    }
+}
+
+/**
+ * 显示登录时间
+ */
+function updateSecurityInfo() {
+    const sessionData = JSON.parse(localStorage.getItem('pgs_admin_session') || '{}');
+    const loginTimeElement = document.getElementById('loginTime');
+
+    if (sessionData.loginTime && loginTimeElement) {
+        const loginTime = new Date(sessionData.loginTime);
+        loginTimeElement.textContent = loginTime.toLocaleString('zh-CN');
+    }
+}
+
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🔧 管理后台初始化...');
@@ -93,6 +163,51 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 检查Worker状态
     setTimeout(checkWorkerStatus, 1000);
+
+    // 更新安全信息
+    updateSecurityInfo();
+
+    // 绑定密码修改表单
+    const changePasswordForm = document.getElementById('changePasswordForm');
+    if (changePasswordForm) {
+        changePasswordForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (newPassword !== confirmPassword) {
+                showToast('新密码和确认密码不匹配', 'error');
+                return;
+            }
+
+            if (newPassword.length < 6) {
+                showToast('新密码长度至少6位', 'error');
+                return;
+            }
+
+            try {
+                await changeAdminPassword(currentPassword, newPassword);
+                showToast('密码修改成功', 'success');
+
+                // 清空表单
+                changePasswordForm.reset();
+
+                // 更新密码强度显示
+                const strengthElement = document.getElementById('passwordStrength');
+                if (strengthElement) {
+                    const strength = newPassword.length >= 8 ? '强' : '中等';
+                    const className = newPassword.length >= 8 ? 'bg-success' : 'bg-warning';
+                    strengthElement.textContent = strength;
+                    strengthElement.className = `badge ${className}`;
+                }
+
+            } catch (error) {
+                showToast(error.message || '密码修改失败', 'error');
+            }
+        });
+    }
 
     console.log('✅ 管理后台初始化完成');
 });

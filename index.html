@@ -134,31 +134,25 @@
                                                 </div>
                                             </div>
                                             <div class="form-text">
-                                                <i class="fas fa-info-circle me-1"></i>
-                                                自动识别单号类型：JobNum、PO号、跟踪号、Reference ID、Shipment ID 等
+                                                <i class="fas fa-magic me-1"></i>
+                                                自动识别单号类型
                                             </div>
                                         </div>
                                     </div>
                                 </form>
 
-                                <!-- Quick Search Examples -->
-                                <div class="mt-4">
+                                <!-- Query History -->
+                                <div class="mt-4" id="queryHistorySection" style="display: none;">
                                     <h6 class="text-muted mb-2">
-                                        <i class="fas fa-lightbulb me-1"></i>
-                                        快速测试
+                                        <i class="fas fa-history me-1"></i>
+                                        查询历史
                                     </h6>
-                                    <div class="d-flex flex-wrap gap-2">
-                                        <button class="btn btn-outline-secondary btn-sm quick-search" data-value="KD2412002091">
-                                            KD2412002091
-                                        </button>
-                                        <button class="btn btn-outline-secondary btn-sm quick-search" data-value="KD2412002092">
-                                            KD2412002092
-                                        </button>
-                                        <button class="btn btn-outline-secondary btn-sm quick-search" data-value="BESH2412170032">
-                                            BESH2412170032
-                                        </button>
-                                        <button class="btn btn-outline-secondary btn-sm quick-search" data-value="KD2412002091,KD2412002092,BESH2412170032">
-                                            批量测试
+                                    <div class="d-flex flex-wrap gap-2" id="queryHistoryContainer">
+                                        <!-- 动态生成查询历史 -->
+                                    </div>
+                                    <div class="mt-2">
+                                        <button class="btn btn-outline-danger btn-sm" onclick="clearQueryHistory()">
+                                            <i class="fas fa-trash me-1"></i>清空历史
                                         </button>
                                     </div>
                                 </div>

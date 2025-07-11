@@ -101,6 +101,10 @@
                             <i class="fas fa-question-circle me-2"></i>
                             帮助信息
                         </a>
+                        <a class="nav-link admin-nav-link" href="#security-config" onclick="showSection('security-config')">
+                            <i class="fas fa-key me-2"></i>
+                            安全设置
+                        </a>
                         <a class="nav-link admin-nav-link" href="#preview" onclick="showSection('preview')">
                             <i class="fas fa-eye me-2"></i>
                             预览效果
@@ -340,7 +344,68 @@
                         </div>
                     </form>
                 </div>
-                
+
+                <!-- 安全设置 -->
+                <div id="security-config" class="config-section d-none">
+                    <h3 class="mb-4">
+                        <i class="fas fa-key text-primary me-2"></i>
+                        安全设置
+                    </h3>
+
+                    <div class="row g-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">
+                                        <i class="fas fa-lock me-2"></i>修改管理员密码
+                                    </h5>
+                                    <form id="changePasswordForm">
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label for="currentPassword" class="form-label">当前密码</label>
+                                                <input type="password" class="form-control" id="currentPassword" required>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="newPassword" class="form-label">新密码</label>
+                                                <input type="password" class="form-control" id="newPassword" required minlength="6">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="confirmPassword" class="form-label">确认新密码</label>
+                                                <input type="password" class="form-control" id="confirmPassword" required>
+                                            </div>
+                                        </div>
+                                        <div class="mt-3">
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="fas fa-save me-2"></i>修改密码
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">
+                                        <i class="fas fa-shield-alt me-2"></i>安全信息
+                                    </h5>
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <p><strong>当前用户:</strong> admin</p>
+                                            <p><strong>登录时间:</strong> <span id="loginTime">-</span></p>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <p><strong>会话有效期:</strong> 24小时</p>
+                                            <p><strong>密码强度:</strong> <span id="passwordStrength" class="badge bg-warning">中等</span></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 预览效果 -->
                 <div id="preview" class="config-section d-none">
                     <h3 class="mb-4">

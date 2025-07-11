@@ -62,14 +62,21 @@ function showToast(message, type = 'info') {
 async function validateLogin(username, password) {
     try {
         // 检查用户名
-        if (username !== AUTH_CONFIG.admin.username) {
+        if (username !== 'admin') {
             return false;
         }
 
         // 计算密码哈希
         const passwordHash = await sha256(password);
-        
-        // 验证密码哈希
+
+        // 首先检查是否有自定义密码配置
+        const savedConfig = localStorage.getItem('pgs_admin_credentials');
+        if (savedConfig) {
+            const config = JSON.parse(savedConfig);
+            return passwordHash === config.passwordHash;
+        }
+
+        // 使用默认密码验证
         return passwordHash === AUTH_CONFIG.admin.passwordHash;
     } catch (error) {
         console.error('登录验证失败:', error);

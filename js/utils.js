@@ -258,6 +258,73 @@ function clearQueryHistory() {
 }
 
 /**
+ * 获取简单查询历史
+ * @returns {Array} 简单查询历史数组
+ */
+function getSimpleQueryHistory() {
+    try {
+        const history = localStorage.getItem('pgs_simple_query_history');
+        return history ? JSON.parse(history) : [];
+    } catch (error) {
+        console.warn('获取简单查询历史失败:', error);
+        return [];
+    }
+}
+
+/**
+ * 保存简单查询历史
+ * @param {Array} history - 查询历史数组
+ */
+function saveSimpleQueryHistory(history) {
+    try {
+        localStorage.setItem('pgs_simple_query_history', JSON.stringify(history));
+    } catch (error) {
+        console.error('保存简单查询历史失败:', error);
+    }
+}
+
+/**
+ * 清除简单查询历史
+ */
+function clearSimpleQueryHistory() {
+    try {
+        localStorage.removeItem('pgs_simple_query_history');
+        console.log('✅ 简单查询历史已清除');
+    } catch (error) {
+        console.error('清除简单查询历史失败:', error);
+    }
+}
+
+/**
+ * 保存查询到简单历史记录
+ * @param {string} trackingRef - 查询单号
+ */
+function saveToHistory(trackingRef) {
+    if (!trackingRef || trackingRef.trim() === '') return;
+
+    const history = getSimpleQueryHistory();
+    const newItem = {
+        trackingRef: trackingRef.trim(),
+        timestamp: Date.now()
+    };
+
+    // 避免重复
+    const existingIndex = history.findIndex(item => item.trackingRef === newItem.trackingRef);
+    if (existingIndex !== -1) {
+        history.splice(existingIndex, 1);
+    }
+
+    history.push(newItem);
+
+    // 只保留最近20个
+    if (history.length > 20) {
+        history.splice(0, history.length - 20);
+    }
+
+    saveSimpleQueryHistory(history);
+}
+
+/**
  * 保存用户偏好设置
  * @param {Object} preferences - 偏好设置
  */
@@ -534,6 +601,11 @@ if (typeof window !== 'undefined') {
         clearQueryHistory,
         saveUserPreferences,
         getUserPreferences,
+
+        // 新的查询历史管理
+        saveToHistory: saveToHistory,
+        getSimpleQueryHistory: getSimpleQueryHistory,
+        clearSimpleQueryHistory: clearSimpleQueryHistory,
 
         // 数据缓存
         cacheData,

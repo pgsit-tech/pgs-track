@@ -71,7 +71,10 @@ function initializeApp() {
     
     // 加载查询历史
     loadQueryHistory();
-    
+
+    // 显示查询历史
+    showQueryHistory();
+
     // 初始化完成
     console.log('✅ 应用初始化完成');
     TrackingUtils.showToast('应用初始化完成', 'success', 2000);
@@ -428,6 +431,9 @@ async function performSingleSearch(trackingNumber, trackingType) {
             formattedData: formattedData,
             summary: result.summary
         });
+
+        // 保存到查询历史
+        saveToHistory(trackingNumber);
 
         console.log('✅ 单号查询成功');
 
@@ -1919,6 +1925,65 @@ function removeHistoryItem(itemId) {
 
         TrackingUtils.showToast('历史记录已删除', 'success');
     }
+}
+
+/**
+ * 显示查询历史
+ */
+function showQueryHistory() {
+    const historySection = document.getElementById('queryHistorySection');
+    const historyContainer = document.getElementById('queryHistoryContainer');
+
+    if (!historySection || !historyContainer) return;
+
+    const history = TrackingUtils.getSimpleQueryHistory();
+
+    if (history.length === 0) {
+        historySection.style.display = 'none';
+        return;
+    }
+
+    // 显示最近的5个查询
+    const recentHistory = history.slice(-5).reverse();
+
+    historyContainer.innerHTML = recentHistory.map(item => `
+        <button class="btn btn-outline-secondary btn-sm" onclick="fillTrackingNumber('${item.trackingRef}')">
+            ${item.trackingRef}
+        </button>
+    `).join('');
+
+    historySection.style.display = 'block';
+}
+
+/**
+ * 填充单号到查询框
+ */
+function fillTrackingNumber(trackingRef) {
+    const input = document.getElementById('trackingInput');
+    if (input) {
+        input.value = trackingRef;
+        input.focus();
+    }
+}
+
+/**
+ * 清空查询历史
+ */
+function clearQueryHistory() {
+    if (confirm('确定要清空查询历史吗？')) {
+        TrackingUtils.clearSimpleQueryHistory();
+        showQueryHistory();
+        TrackingUtils.showToast('查询历史已清空', 'info');
+    }
+}
+
+/**
+ * 保存查询到历史记录
+ */
+function saveToHistory(trackingRef) {
+    // 使用TrackingUtils中的实现
+    TrackingUtils.saveToHistory(trackingRef);
+    showQueryHistory();
 }
 
 // ===================================
