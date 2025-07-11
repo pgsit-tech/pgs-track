@@ -574,6 +574,107 @@ async function handleConfigUpdate(request, env) {
     }
 }
 
+/**
+ * 处理网站配置更新请求
+ * @param {Request} request - 请求对象
+ * @param {Object} env - 环境变量
+ * @returns {Response} 响应对象
+ */
+async function handleSiteConfigUpdate(request, env) {
+    try {
+        // 验证请求来源
+        const origin = request.headers.get('Origin');
+        if (!ALLOWED_ORIGINS.includes(origin)) {
+            return createErrorResponse('未授权的请求来源', 403);
+        }
+
+        // 验证管理员Token
+        const authHeader = request.headers.get('Authorization');
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return createErrorResponse('缺少授权Token', 401);
+        }
+
+        const token = authHeader.substring(7);
+        if (token !== env.ADMIN_TOKEN) {
+            return createErrorResponse('无效的授权Token', 401);
+        }
+
+        const configData = await request.json();
+
+        // 保存网站配置到KV存储
+        if (env.CONFIG_KV) {
+            await env.CONFIG_KV.put('site_config', JSON.stringify(configData));
+
+            return new Response(JSON.stringify({
+                success: true,
+                message: '网站配置已保存到KV存储',
+                timestamp: Date.now()
+            }), {
+                status: 200,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': origin,
+                    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+                }
+            });
+        } else {
+            return createErrorResponse('KV存储未配置', 500);
+        }
+
+    } catch (error) {
+        console.error('网站配置更新失败:', error);
+        return createErrorResponse('网站配置更新失败: ' + error.message, 500);
+    }
+}
+
+/**
+ * 处理网站配置获取请求
+ * @param {Request} request - 请求对象
+ * @param {Object} env - 环境变量
+ * @returns {Response} 响应对象
+ */
+async function handleSiteConfigGet(request, env) {
+    try {
+        const origin = request.headers.get('Origin');
+
+        // 从KV存储获取网站配置
+        if (env.CONFIG_KV) {
+            const configData = await env.CONFIG_KV.get('site_config');
+
+            if (configData) {
+                return new Response(configData, {
+                    status: 200,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': origin || '*',
+                        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                        'Access-Control-Allow-Headers': 'Content-Type'
+                    }
+                });
+            } else {
+                return new Response(JSON.stringify({
+                    error: '网站配置不存在'
+                }), {
+                    status: 404,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': origin || '*',
+                        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                        'Access-Control-Allow-Headers': 'Content-Type'
+                    }
+                });
+            }
+        } else {
+            return createErrorResponse('KV存储未配置', 500);
+        }
+
+    } catch (error) {
+        console.error('获取网站配置失败:', error);
+        return createErrorResponse('获取网站配置失败: ' + error.message, 500);
+    }
+}
+
 export default {
     async fetch(request, env, ctx) {
         const url = new URL(request.url);
@@ -595,6 +696,16 @@ export default {
                     'Access-Control-Allow-Headers': 'Content-Type'
                 }
             });
+        }
+
+        // 处理网站配置更新请求
+        if (url.pathname === '/config/site/update' && request.method === 'POST') {
+            return handleSiteConfigUpdate(request, env);
+        }
+
+        // 处理网站配置获取请求
+        if (url.pathname === '/config/site' && request.method === 'GET') {
+            return handleSiteConfigGet(request, env);
         }
 
         return handleRequest(request, env);

@@ -243,10 +243,20 @@ function updatePasswordStrength(password) {
 }
 
 // 页面加载完成后初始化
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     console.log('🔧 管理后台初始化...');
 
-    loadConfig();
+    // 优先从KV存储加载配置
+    const kvConfig = await loadConfigFromKV();
+    if (kvConfig) {
+        siteConfig = kvConfig;
+        console.log('✅ 从KV存储加载配置成功');
+    } else {
+        // 回退到本地配置
+        loadConfig();
+        console.log('ℹ️ 使用本地配置');
+    }
+
     initializeColorPickers();
     initializeLogoPreview();
 
@@ -481,7 +491,7 @@ function getDefaultConfig() {
 // 网站配置保存
 // ===================================
 
-function saveSiteConfig() {
+async function saveSiteConfig() {
     siteConfig.site = {
         title: document.getElementById('siteTitle').value,
         subtitle: document.getElementById('siteSubtitle').value,
@@ -494,7 +504,15 @@ function saveSiteConfig() {
     // 立即应用配置
     applyConfigToSession();
 
-    showToast('网站配置已保存并应用', 'success');
+    // 保存到KV存储
+    const kvSaved = await saveConfigToKV();
+
+    if (kvSaved) {
+        showToast('网站配置已保存并持久化', 'success');
+    } else {
+        showToast('网站配置已保存（仅本地，KV存储失败）', 'warning');
+    }
+
     console.log('网站配置已更新:', siteConfig.site);
 }
 
@@ -511,7 +529,7 @@ function resetSiteConfig() {
 // 品牌设置保存
 // ===================================
 
-function saveBrandingConfig() {
+async function saveBrandingConfig() {
     siteConfig.branding = {
         logoUrl: document.getElementById('logoUrl').value,
         faviconUrl: document.getElementById('faviconUrl').value,
@@ -524,7 +542,15 @@ function saveBrandingConfig() {
     // 立即应用配置
     applyConfigToSession();
 
-    showToast('品牌设置已保存并应用', 'success');
+    // 保存到KV存储
+    const kvSaved = await saveConfigToKV();
+
+    if (kvSaved) {
+        showToast('品牌设置已保存并持久化', 'success');
+    } else {
+        showToast('品牌设置已保存（仅本地，KV存储失败）', 'warning');
+    }
+
     console.log('品牌设置已更新:', siteConfig.branding);
 }
 
@@ -845,7 +871,7 @@ function resetHelpConfig() {
  */
 function applyConfigToSession() {
     try {
-        // 保存到localStorage
+        // 保存到localStorage（临时存储）
         localStorage.setItem('pgs_admin_config', JSON.stringify(siteConfig));
 
         // 更新全局配置
@@ -861,6 +887,85 @@ function applyConfigToSession() {
     } catch (error) {
         console.error('应用配置到会话失败:', error);
         updateConfigStatus('error');
+    }
+}
+
+/**
+ * 保存配置到KV存储（持久化）
+ */
+async function saveConfigToKV() {
+    try {
+        const workerUrl = getWorkerProxyUrl();
+        if (!workerUrl) {
+            console.warn('⚠️ Worker URL未配置，跳过KV存储');
+            return false;
+        }
+
+        const configData = {
+            siteConfig: siteConfig,
+            timestamp: Date.now(),
+            version: '1.0.0'
+        };
+
+        const response = await fetch(`${workerUrl}/config/site/update`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Origin': window.location.origin,
+                'Authorization': `Bearer ${getAdminToken()}`
+            },
+            body: JSON.stringify(configData)
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            console.log('✅ 配置已保存到KV存储:', result);
+            return true;
+        } else {
+            console.warn('⚠️ 保存配置到KV失败:', response.status, response.statusText);
+            return false;
+        }
+
+    } catch (error) {
+        console.error('❌ 保存配置到KV存储失败:', error);
+        return false;
+    }
+}
+
+/**
+ * 从KV存储加载配置
+ */
+async function loadConfigFromKV() {
+    try {
+        const workerUrl = getWorkerProxyUrl();
+        if (!workerUrl) {
+            console.warn('⚠️ Worker URL未配置，跳过KV加载');
+            return null;
+        }
+
+        const response = await fetch(`${workerUrl}/config/site`, {
+            method: 'GET',
+            headers: {
+                'Origin': window.location.origin,
+                'Accept': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            const configData = await response.json();
+            console.log('✅ 从KV存储加载配置:', configData);
+            return configData.siteConfig || null;
+        } else if (response.status === 404) {
+            console.log('ℹ️ KV存储中没有配置数据，使用默认配置');
+            return null;
+        } else {
+            console.warn('⚠️ 从KV加载配置失败:', response.status, response.statusText);
+            return null;
+        }
+
+    } catch (error) {
+        console.error('❌ 从KV存储加载配置失败:', error);
+        return null;
     }
 }
 
@@ -1121,7 +1226,7 @@ function updateFooterLink(index, field, value) {
     }
 }
 
-function saveFooterConfig() {
+async function saveFooterConfig() {
     siteConfig.footer = {
         ...siteConfig.footer,
         copyright: document.getElementById('footerCopyright').value,
@@ -1133,7 +1238,15 @@ function saveFooterConfig() {
     // 立即应用配置
     applyConfigToSession();
 
-    showToast('页脚配置已保存并应用', 'success');
+    // 保存到KV存储
+    const kvSaved = await saveConfigToKV();
+
+    if (kvSaved) {
+        showToast('页脚配置已保存并持久化', 'success');
+    } else {
+        showToast('页脚配置已保存（仅本地，KV存储失败）', 'warning');
+    }
+
     console.log('页脚配置已更新:', siteConfig.footer);
 }
 
