@@ -50,9 +50,9 @@ const API_CONFIG = {
     // 请求超时时间
     timeout: 30000,
     
-    // 重试配置
+    // 重试配置 - 减少重试次数以加快查询速度
     retry: {
-        maxAttempts: 3,
+        maxAttempts: 1,
         delay: 1000,
         backoff: 2
     },

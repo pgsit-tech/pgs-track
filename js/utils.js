@@ -20,14 +20,23 @@ const TRACKING_TYPES = {
 };
 
 /**
- * 单号格式正则表达式
+ * 单号格式正则表达式 - 支持API文档中提到的所有类型
  */
 const TRACKING_PATTERNS = {
-    [TRACKING_TYPES.JOB_NUM]: /^[A-Z]{2}\d{10}$/,           // KD2412002091
-    [TRACKING_TYPES.PO_NUM]: /^[A-Z]{4}\d{10}$/,           // BESH2412170032
-    [TRACKING_TYPES.TRACKING_NUM]: /^\d{8,15}$/,            // 43005822480
-    [TRACKING_TYPES.REFERENCE_ID]: /^[A-Z0-9]{8,20}$/,     // 通用Reference ID
-    [TRACKING_TYPES.SHIPMENT_ID]: /^[A-Z0-9\-]{10,30}$/    // 通用Shipment ID
+    // 工作号 (Job Number) - 如: CBXMSEUS25040942, KD2412002091
+    [TRACKING_TYPES.JOB_NUM]: /^[A-Z]{2,4}[A-Z0-9]{8,16}$/,
+
+    // PO号 (Purchase Order) - 如: BESH2412170032, PO123456789
+    [TRACKING_TYPES.PO_NUM]: /^(PO)?[A-Z]{2,4}\d{8,12}$/,
+
+    // 主单号/快递跟踪号 - 如: 43005822480, 1234567890123
+    [TRACKING_TYPES.TRACKING_NUM]: /^\d{8,20}$/,
+
+    // SO号 (Sales Order) - 如: SO123456789, SO-2024-001
+    [TRACKING_TYPES.REFERENCE_ID]: /^(SO[\-]?)?[A-Z0-9\-]{6,20}$/,
+
+    // Shipment ID - 如: SH-2024-001, SHIP123456789
+    [TRACKING_TYPES.SHIPMENT_ID]: /^(SH[\-]?|SHIP)?[A-Z0-9\-]{8,30}$/
 };
 
 /**
