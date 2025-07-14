@@ -130,15 +130,19 @@ async function handleTrackingRequest(request, apiPath, env) {
 
         // 从KV存储获取动态公司配置
         const companyConfigs = await getDynamicCompanyConfigs(env);
+        console.log('获取到的公司配置:', Object.keys(companyConfigs));
 
-        // 获取第一个启用的公司配置
-        const enabledCompany = Object.values(companyConfigs).find(company => company.enabled);
+        // 获取第一个启用且有完整API密钥的公司配置
+        const enabledCompany = Object.values(companyConfigs).find(company =>
+            company.enabled && company.appKey && company.appToken
+        );
 
-        if (!enabledCompany || !enabledCompany.appKey || !enabledCompany.appToken) {
-            console.error('API密钥未配置或无可用公司');
-            return createErrorResponse('服务配置错误', 500);
+        if (!enabledCompany) {
+            console.error('没有找到可用的API配置，配置详情:', companyConfigs);
+            return createErrorResponse('API配置未完成，请联系管理员', 500);
         }
 
+        console.log('使用公司配置:', enabledCompany.name);
         const appKey = enabledCompany.appKey;
         const appToken = enabledCompany.appToken;
 
@@ -272,14 +276,19 @@ async function handleFMSRequest(request, apiPath, env) {
         
         // 从KV存储获取动态公司配置
         const companyConfigs = await getDynamicCompanyConfigs(env);
+        console.log('FMS获取到的公司配置:', Object.keys(companyConfigs));
 
-        // 获取第一个启用的公司配置
-        const enabledCompany = Object.values(companyConfigs).find(company => company.enabled);
+        // 获取第一个启用且有完整API密钥的公司配置
+        const enabledCompany = Object.values(companyConfigs).find(company =>
+            company.enabled && company.appKey && company.appToken
+        );
 
-        if (!enabledCompany || !enabledCompany.appKey || !enabledCompany.appToken) {
-            console.error('FMS API密钥未配置或无可用公司');
-            return createErrorResponse('服务配置错误', 500);
+        if (!enabledCompany) {
+            console.error('FMS没有找到可用的API配置，配置详情:', companyConfigs);
+            return createErrorResponse('FMS API配置未完成，请联系管理员', 500);
         }
+
+        console.log('FMS使用公司配置:', enabledCompany.name);
 
         // 构建AU-OPS API请求（使用第一个地址）
         const auOpsUrl = `${AU_OPS_CONFIG.baseUrls[0]}${apiPath}?${queryParams}`;
@@ -492,7 +501,19 @@ async function getDynamicCompanyConfigs(env) {
         if (env.CONFIG_KV) {
             const siteConfigData = await env.CONFIG_KV.get('siteConfig');
             if (siteConfigData) {
-                const siteConfig = JSON.parse(siteConfigData);
+                const rawData = JSON.parse(siteConfigData);
+                console.log('KV原始数据结构:', Object.keys(rawData));
+
+                // 处理两种可能的数据格式
+                let siteConfig;
+                if (rawData.siteConfig) {
+                    // 格式: { "siteConfig": { "api": { "companies": [...] } } }
+                    siteConfig = rawData.siteConfig;
+                } else {
+                    // 格式: { "api": { "companies": [...] } }
+                    siteConfig = rawData;
+                }
+
                 if (siteConfig.api && siteConfig.api.companies) {
                     // 转换为Worker期望的格式
                     DYNAMIC_COMPANY_CONFIGS = {};
@@ -734,6 +755,47 @@ export default {
                     'Access-Control-Allow-Headers': 'Content-Type'
                 }
             });
+        }
+
+        // 调试端点：查看动态公司配置详情
+        if (url.pathname === '/debug/company-configs' && request.method === 'GET') {
+            try {
+                const configs = await getDynamicCompanyConfigs(env);
+                const enabledCompanies = Object.values(configs).filter(c => c.enabled);
+                const validCompanies = Object.values(configs).filter(c => c.enabled && c.appKey && c.appToken);
+
+                return new Response(JSON.stringify({
+                    success: true,
+                    totalConfigs: Object.keys(configs).length,
+                    configs: configs,
+                    enabledCompanies: enabledCompanies.map(c => ({
+                        name: c.name,
+                        hasAppKey: !!c.appKey,
+                        hasAppToken: !!c.appToken,
+                        enabled: c.enabled
+                    })),
+                    validCompanies: validCompanies.map(c => c.name),
+                    validCount: validCompanies.length
+                }, null, 2), {
+                    status: 200,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    }
+                });
+            } catch (error) {
+                return new Response(JSON.stringify({
+                    success: false,
+                    error: error.message,
+                    stack: error.stack
+                }), {
+                    status: 500,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    }
+                });
+            }
         }
 
         // 处理网站配置更新请求
