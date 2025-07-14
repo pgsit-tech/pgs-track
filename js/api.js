@@ -241,7 +241,7 @@ async function queryTrackingInfo(trackingRef, companyId = 'default') {
 }
 
 /**
- * 多公司API汇聚查询单个订单轨迹
+ * 多公司API轮询查询单个订单轨迹（方案A：依次尝试直到成功）
  * @param {string} trackingRef - 查询参数（JobNum）
  * @returns {Promise<Object>} 查询结果
  */
@@ -250,7 +250,7 @@ async function queryTrackingInfoFromAllCompanies(trackingRef) {
         throw new Error('查询参数不能为空');
     }
 
-    console.log(`🔍 开始多公司汇聚查询: ${trackingRef}`);
+    console.log(`🔍 开始多公司轮询查询: ${trackingRef}`);
 
     // 按优先级排序公司配置
     const companyConfigs = getCompanyConfigs();
@@ -258,58 +258,65 @@ async function queryTrackingInfoFromAllCompanies(trackingRef) {
         .filter(([,config]) => config.enabled !== false)
         .sort(([,a], [,b]) => a.priority - b.priority);
 
-    const results = [];
+    const attemptResults = [];
     let successResult = null;
 
-    // 并发查询所有公司API
-    const queryPromises = companies.map(async ([companyId, config]) => {
+    // 依次尝试每个公司API，直到找到成功的结果
+    for (const [companyId, config] of companies) {
         try {
-            console.log(`查询 ${config.name} (${companyId})...`);
+            console.log(`🔄 尝试查询 ${config.name} (${companyId})...`);
             const result = await queryTrackingInfo(trackingRef, companyId);
 
-            return {
+            const companyResult = {
                 companyId,
                 companyName: result.companyName || config.name, // 优先使用Worker返回的公司名称
                 success: true,
+                attemptOrder: attemptResults.length + 1,
                 ...result
             };
+
+            attemptResults.push(companyResult);
+            successResult = companyResult;
+
+            console.log(`✅ 查询成功 - 来源: ${companyResult.companyName} (第${companyResult.attemptOrder}次尝试)`);
+            break; // 找到成功结果，停止尝试其他公司
+
         } catch (error) {
-            console.warn(`${config.name} 查询失败:`, error.message);
-            return {
+            console.warn(`❌ ${config.name} 查询失败:`, error.message);
+            attemptResults.push({
                 companyId,
                 companyName: config.name,
                 success: false,
                 error: error.message,
+                attemptOrder: attemptResults.length + 1,
                 timestamp: new Date().toISOString()
-            };
+            });
+
+            // 继续尝试下一个公司
+            continue;
         }
-    });
-
-    // 等待所有查询完成
-    const allResults = await Promise.all(queryPromises);
-
-    // 找到第一个成功的结果
-    successResult = allResults.find(result => result.success);
+    }
 
     // 汇总结果
     const summary = {
         trackingRef,
         totalCompanies: companies.length,
-        successCount: allResults.filter(r => r.success).length,
-        failedCount: allResults.filter(r => !r.success).length,
-        allResults: allResults,
+        attemptedCompanies: attemptResults.length,
+        successCount: attemptResults.filter(r => r.success).length,
+        failedCount: attemptResults.filter(r => !r.success).length,
+        attemptResults: attemptResults,
+        queryStrategy: 'sequential', // 标识使用顺序查询策略
         timestamp: new Date().toISOString()
     };
 
     if (successResult) {
-        console.log(`✅ 查询成功 - 来源: ${successResult.companyName}`);
         return {
             success: true,
             primaryResult: successResult,
             summary: summary
         };
     } else {
-        console.log(`❌ 所有公司查询均失败`);
+        console.log(`❌ 所有公司查询均失败 (尝试了${attemptResults.length}个公司)`);
         // 根据用户要求，不显示内部API架构细节
         throw new Error('查询失败');
     }
