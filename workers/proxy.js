@@ -118,6 +118,7 @@ async function handleTrackingRequest(request, apiPath, env) {
     try {
         const url = new URL(request.url);
         const trackingRef = url.searchParams.get('trackingRef');
+        const companyId = url.searchParams.get('companyId'); // 获取指定的公司ID
 
         if (!trackingRef) {
             return createErrorResponse('查询参数无效', 400);
@@ -132,19 +133,38 @@ async function handleTrackingRequest(request, apiPath, env) {
         const companyConfigs = await getDynamicCompanyConfigs(env);
         console.log('获取到的公司配置:', Object.keys(companyConfigs));
 
-        // 获取第一个启用且有完整API密钥的公司配置
-        const enabledCompany = Object.values(companyConfigs).find(company =>
-            company.enabled && company.appKey && company.appToken
-        );
+        let selectedCompany = null;
+        let selectedCompanyId = null;
 
-        if (!enabledCompany) {
+        // 如果指定了公司ID，优先使用指定的公司
+        if (companyId && companyConfigs[companyId]) {
+            const company = companyConfigs[companyId];
+            if (company.enabled && company.appKey && company.appToken) {
+                selectedCompany = company;
+                selectedCompanyId = companyId;
+                console.log('使用指定公司配置:', company.name);
+            }
+        }
+
+        // 如果没有指定公司或指定的公司不可用，选择第一个可用的公司
+        if (!selectedCompany) {
+            const availableCompanies = Object.entries(companyConfigs)
+                .filter(([id, company]) => company.enabled && company.appKey && company.appToken)
+                .sort(([,a], [,b]) => a.priority - b.priority);
+
+            if (availableCompanies.length > 0) {
+                [selectedCompanyId, selectedCompany] = availableCompanies[0];
+                console.log('使用默认公司配置:', selectedCompany.name);
+            }
+        }
+
+        if (!selectedCompany) {
             console.error('没有找到可用的API配置，配置详情:', companyConfigs);
             return createErrorResponse('API配置未完成，请联系管理员', 500);
         }
 
-        console.log('使用公司配置:', enabledCompany.name);
-        const appKey = enabledCompany.appKey;
-        const appToken = enabledCompany.appToken;
+        const appKey = selectedCompany.appKey;
+        const appToken = selectedCompany.appToken;
 
         // 尝试多个API地址，使用官方推荐的认证方式
         let auOpsResponse = null;
@@ -223,6 +243,8 @@ async function handleTrackingRequest(request, apiPath, env) {
             apiVersion: apiPath.includes('v5') ? 'v5' : 'v3',
             data: data,
             timestamp: new Date().toISOString(),
+            companyId: selectedCompanyId,
+            companyName: selectedCompany.name,
             proxy: {
                 version: '1.0.0',
                 endpoint: apiPath

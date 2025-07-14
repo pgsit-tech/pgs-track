@@ -205,8 +205,8 @@ async function queryTrackingInfo(trackingRef, companyId = 'default') {
     
     // 使用v5 API（官方推荐版本）
     try {
-        console.log(`尝试v5 API查询: ${trackingRef}`);
-        const url = `${API_CONFIG.baseUrl}/v5/tracking?trackingRef=${encodeURIComponent(trackingRef)}`;
+        console.log(`尝试v5 API查询: ${trackingRef} (公司: ${companyId})`);
+        const url = `${API_CONFIG.baseUrl}/v5/tracking?trackingRef=${encodeURIComponent(trackingRef)}&companyId=${encodeURIComponent(companyId)}`;
 
         const response = await fetchWithRetry(url, {
             method: 'GET',
@@ -269,7 +269,7 @@ async function queryTrackingInfoFromAllCompanies(trackingRef) {
 
             return {
                 companyId,
-                companyName: config.name,
+                companyName: result.companyName || config.name, // 优先使用Worker返回的公司名称
                 success: true,
                 ...result
             };
