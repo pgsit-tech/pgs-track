@@ -1,0 +1,11 @@
+{
+  "companies": {
+    "company1": {
+      "name": "CBEL",
+      "appKey": "baMccCbpHMZLTZksk5E2E^3KH#L9lvvf",
+      "appToken": "^tKm71iS7eKoQaKS5y5L8ZUDjvscOV9F#sSbGSsA6eQuMuMTfvI@yMx$dKXdZtKcVe#KycHvf8sg9oyc1inM#acvAycpD@85rbEeDZMn#EBa$c3bftirsaD_XAai5u7oWL$zgQajCl@zSojZNllxO^jpNAmJXHf0GD89LRE8I~4gm5VXmT2HS~mKS#ewOqoK~eoJhuH@v#7~$rQwGlRwCnt2nXKc$3m21#KBtI2tWIygHqW37zyLN0hMWxe_3yg",
+      "priority": 1,
+      "enabled": true
+    }
+  }
+}

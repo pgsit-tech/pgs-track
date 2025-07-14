@@ -573,7 +573,22 @@ async function handleConfigUpdate(request, env) {
 
             // 更新API配置部分
             if (!siteConfig.api) siteConfig.api = {};
-            siteConfig.api.companies = configData.companies;
+
+            // 转换对象格式为数组格式（前端期望的格式）
+            const companiesArray = [];
+            if (configData.companies) {
+                Object.entries(configData.companies).forEach(([id, config]) => {
+                    companiesArray.push({
+                        id: id,
+                        name: config.name,
+                        appKey: config.appKey,
+                        appToken: config.appToken,
+                        priority: config.priority,
+                        enabled: config.enabled
+                    });
+                });
+            }
+            siteConfig.api.companies = companiesArray;
 
             // 保存完整配置
             await env.CONFIG_KV.put('siteConfig', JSON.stringify(siteConfig));
