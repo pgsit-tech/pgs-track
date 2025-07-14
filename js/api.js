@@ -216,8 +216,13 @@ async function queryTrackingInfo(trackingRef, companyId = 'default') {
         const data = await response.json();
 
         // 检查API响应是否成功
-        if (data && data.success === false) {
-            throw new Error(data.error || '查询失败');
+        if (data && (data.success === false || data.code === 404 || data.code >= 400)) {
+            throw new Error(data.error || data.description || '查询失败');
+        }
+
+        // 检查是否有有效数据
+        if (!data || (data.code && data.code !== 200)) {
+            throw new Error('未找到有效的轨迹数据');
         }
 
         const result = {
