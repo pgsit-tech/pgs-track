@@ -20,14 +20,23 @@ const AU_OPS_CONFIG = {
 // 动态公司配置 - 从KV存储或环境变量获取
 let DYNAMIC_COMPANY_CONFIGS = null;
 
-// 允许的来源域名（CORS配置）
-const ALLOWED_ORIGINS = [
-    'http://localhost:8080',
-    'http://localhost:3000',
-    'http://localhost:8000',
-    'https://pgs-track.pages.dev',
-    'https://pgs-track-pages.pages.dev'  // 可能的实际域名
-];
+// 获取允许的来源域名（从环境变量或默认值）
+function getAllowedOrigins(env) {
+    const corsOrigins = env.CORS_ORIGINS || '';
+    const defaultOrigins = [
+        'http://localhost:8080',
+        'http://localhost:3000',
+        'http://localhost:8000',
+        'https://pgs-track.pages.dev'
+    ];
+
+    if (corsOrigins) {
+        const envOrigins = corsOrigins.split(',').map(origin => origin.trim());
+        return [...new Set([...defaultOrigins, ...envOrigins])];
+    }
+
+    return defaultOrigins;
+}
 
 // 支持的API端点
 const SUPPORTED_ENDPOINTS = [
@@ -53,7 +62,7 @@ async function handleRequest(request, env) {
 
     // 处理OPTIONS预检请求
     if (request.method === 'OPTIONS') {
-        return handleCORS(request);
+        return handleCORS(request, env);
     }
 
     // 只允许GET请求
@@ -69,7 +78,7 @@ async function handleRequest(request, env) {
     console.log('请求来源:', origin);
     console.log('User-Agent:', request.headers.get('User-Agent'));
 
-    if (!isOriginAllowed(origin)) {
+    if (!isOriginAllowed(origin, env)) {
         console.log('来源被拒绝:', origin);
         return createErrorResponse('访问被拒绝', 403);
     }
@@ -211,7 +220,7 @@ async function handleTrackingRequest(request, apiPath, env) {
             }
         };
         
-        return createSuccessResponse(responseData, request.headers.get('Origin'));
+        return createSuccessResponse(responseData, request.headers.get('Origin'), env);
         
     } catch (error) {
         console.error('轨迹查询处理错误:', error);
@@ -288,7 +297,7 @@ async function handleFMSRequest(request, apiPath, env) {
             }
         };
         
-        return createSuccessResponse(responseData, request.headers.get('Origin'));
+        return createSuccessResponse(responseData, request.headers.get('Origin'), env);
         
     } catch (error) {
         console.error('FMS请求处理错误:', error);
@@ -308,14 +317,15 @@ async function handleFMSRequest(request, apiPath, env) {
 /**
  * 处理CORS预检请求
  * @param {Request} request - 请求对象
+ * @param {Object} env - 环境变量
  * @returns {Response} CORS响应
  */
-function handleCORS(request) {
+function handleCORS(request, env) {
     const origin = request.headers.get('Origin');
 
     console.log('处理OPTIONS预检请求, Origin:', origin);
 
-    if (!isOriginAllowed(origin)) {
+    if (!isOriginAllowed(origin, env)) {
         console.log('OPTIONS请求被拒绝');
         return new Response(null, { status: 403 });
     }
@@ -340,19 +350,21 @@ function handleCORS(request) {
 /**
  * 检查来源是否被允许
  * @param {string} origin - 来源域名
+ * @param {Object} env - 环境变量
  * @returns {boolean} 是否允许
  */
-function isOriginAllowed(origin) {
+function isOriginAllowed(origin, env) {
     if (!origin) {
         console.log('CORS检查: 无Origin头');
         return false;
     }
 
+    const allowedOrigins = getAllowedOrigins(env);
     console.log('CORS检查: Origin =', origin);
-    console.log('CORS检查: 允许的域名 =', ALLOWED_ORIGINS);
+    console.log('CORS检查: 允许的域名 =', allowedOrigins);
 
     // 检查精确匹配
-    if (ALLOWED_ORIGINS.includes(origin)) {
+    if (allowedOrigins.includes(origin)) {
         console.log('CORS检查: 精确匹配通过');
         return true;
     }
@@ -402,15 +414,16 @@ function isValidTrackingRef(trackingRef) {
  * 创建成功响应
  * @param {Object} data - 响应数据
  * @param {string} origin - 来源域名
+ * @param {Object} env - 环境变量
  * @returns {Response} 响应对象
  */
-function createSuccessResponse(data, origin) {
+function createSuccessResponse(data, origin, env) {
     const headers = {
         'Content-Type': 'application/json',
         'Cache-Control': 'public, max-age=300' // 5分钟缓存
     };
-    
-    if (isOriginAllowed(origin)) {
+
+    if (isOriginAllowed(origin, env)) {
         headers['Access-Control-Allow-Origin'] = origin;
         headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS';
         headers['Access-Control-Allow-Headers'] = 'Content-Type';
@@ -544,7 +557,7 @@ async function handleConfigUpdate(request, env) {
     try {
         // 验证请求来源
         const origin = request.headers.get('Origin');
-        if (!ALLOWED_ORIGINS.includes(origin)) {
+        if (!isOriginAllowed(origin, env)) {
             return createErrorResponse('未授权的请求来源', 403);
         }
 
@@ -629,7 +642,7 @@ async function handleSiteConfigUpdate(request, env) {
     try {
         // 验证请求来源
         const origin = request.headers.get('Origin');
-        if (!ALLOWED_ORIGINS.includes(origin)) {
+        if (!isOriginAllowed(origin, env)) {
             return createErrorResponse('未授权的请求来源', 403);
         }
 
