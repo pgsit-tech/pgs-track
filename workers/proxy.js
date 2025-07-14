@@ -128,14 +128,19 @@ async function handleTrackingRequest(request, apiPath, env) {
             return createErrorResponse('查询参数格式错误', 400);
         }
 
-        // 从环境变量获取API密钥
-        const appKey = env.COMPANY1_APP_KEY || env.APP_KEY;
-        const appToken = env.COMPANY1_APP_TOKEN || env.APP_TOKEN;
+        // 从KV存储获取动态公司配置
+        const companyConfigs = await getDynamicCompanyConfigs(env);
 
-        if (!appKey || !appToken) {
-            console.error('API密钥未配置');
+        // 获取第一个启用的公司配置
+        const enabledCompany = Object.values(companyConfigs).find(company => company.enabled);
+
+        if (!enabledCompany || !enabledCompany.appKey || !enabledCompany.appToken) {
+            console.error('API密钥未配置或无可用公司');
             return createErrorResponse('服务配置错误', 500);
         }
+
+        const appKey = enabledCompany.appKey;
+        const appToken = enabledCompany.appToken;
 
         // 尝试多个API地址，使用官方推荐的认证方式
         let auOpsResponse = null;
@@ -265,15 +270,26 @@ async function handleFMSRequest(request, apiPath, env) {
             queryParams = `shipmentId=${encodeURIComponent(shipmentId)}`;
         }
         
+        // 从KV存储获取动态公司配置
+        const companyConfigs = await getDynamicCompanyConfigs(env);
+
+        // 获取第一个启用的公司配置
+        const enabledCompany = Object.values(companyConfigs).find(company => company.enabled);
+
+        if (!enabledCompany || !enabledCompany.appKey || !enabledCompany.appToken) {
+            console.error('FMS API密钥未配置或无可用公司');
+            return createErrorResponse('服务配置错误', 500);
+        }
+
         // 构建AU-OPS API请求（使用第一个地址）
         const auOpsUrl = `${AU_OPS_CONFIG.baseUrls[0]}${apiPath}?${queryParams}`;
-        
+
         const auOpsResponse = await fetch(auOpsUrl, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
-                'appKey': AU_OPS_CONFIG.credentials.appKey,
-                'appToken': AU_OPS_CONFIG.credentials.appToken
+                'appKey': enabledCompany.appKey,
+                'appToken': enabledCompany.appToken
             },
             signal: AbortSignal.timeout(AU_OPS_CONFIG.timeout)
         });
@@ -495,55 +511,16 @@ async function getDynamicCompanyConfigs(env) {
             }
         }
 
-        // 2. 从环境变量构建配置（回退方案）
-        console.log('⚠️ KV配置不存在，使用环境变量回退');
-        DYNAMIC_COMPANY_CONFIGS = {
-            company1: {
-                name: env.COMPANY1_NAME || '总公司',
-                appKey: env.COMPANY1_APP_KEY,
-                appToken: env.COMPANY1_APP_TOKEN,
-                priority: 1,
-                enabled: true
-            }
-        };
-
-        // 添加其他公司配置（如果存在）
-        if (env.COMPANY2_APP_KEY) {
-            DYNAMIC_COMPANY_CONFIGS.company2 = {
-                name: env.COMPANY2_NAME || '分公司A',
-                appKey: env.COMPANY2_APP_KEY,
-                appToken: env.COMPANY2_APP_TOKEN,
-                priority: 2,
-                enabled: true
-            };
-        }
-
-        if (env.COMPANY3_APP_KEY) {
-            DYNAMIC_COMPANY_CONFIGS.company3 = {
-                name: env.COMPANY3_NAME || '分公司B',
-                appKey: env.COMPANY3_APP_KEY,
-                appToken: env.COMPANY3_APP_TOKEN,
-                priority: 3,
-                enabled: true
-            };
-        }
-
-        console.log('✅ 从环境变量构建公司配置');
+        // 2. KV配置不存在时返回空配置
+        console.log('⚠️ KV配置不存在，返回空配置');
+        DYNAMIC_COMPANY_CONFIGS = {};
         return DYNAMIC_COMPANY_CONFIGS;
 
     } catch (error) {
         console.error('❌ 获取动态配置失败:', error);
 
-        // 返回默认配置
-        return {
-            company1: {
-                name: '总公司',
-                appKey: env.COMPANY1_APP_KEY || env.APP_KEY,
-                appToken: env.COMPANY1_APP_TOKEN || env.APP_TOKEN,
-                priority: 1,
-                enabled: true
-            }
-        };
+        // 返回空配置，强制使用KV存储
+        return {};
     }
 }
 
