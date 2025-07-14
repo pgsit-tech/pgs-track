@@ -235,7 +235,23 @@ async function handleTrackingRequest(request, apiPath, env) {
         }
         
         const data = await auOpsResponse.json();
-        
+
+        // 检查AU-OPS API响应内容，判断是否为有效数据
+        const isValidData = data &&
+            data.code !== 404 &&
+            data.code !== 400 &&
+            !(data.code >= 400) &&
+            data.description !== "Not found!" &&
+            !(data.error && data.error.includes('not found'));
+
+        if (!isValidData) {
+            console.log(`❌ AU-OPS API返回无效数据: ${JSON.stringify(data)}`);
+            return createErrorResponse(
+                data.description || data.error || '未找到轨迹数据',
+                data.code || 404
+            );
+        }
+
         // 添加代理信息
         const responseData = {
             success: true,
@@ -250,7 +266,7 @@ async function handleTrackingRequest(request, apiPath, env) {
                 endpoint: apiPath
             }
         };
-        
+
         return createSuccessResponse(responseData, request.headers.get('Origin'), env);
         
     } catch (error) {
