@@ -170,7 +170,12 @@ function updatePageMeta(siteConfig) {
             const titleElement = navbarBrand.querySelector('.ms-2');
             if (titleElement) {
                 titleElement.textContent = siteConfig.title;
+                console.log('✅ 导航栏标题已更新为:', siteConfig.title);
+            } else {
+                console.warn('❌ 未找到导航栏标题元素 (.ms-2)');
             }
+        } else {
+            console.warn('❌ 未找到导航栏品牌元素 (.navbar-brand)');
         }
     }
     
