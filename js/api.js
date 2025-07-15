@@ -190,8 +190,9 @@ async function queryTrackingInfo(trackingRef, companyId = 'default') {
         throw new Error('查询参数不能为空');
     }
     
-    // 临时禁用缓存以测试智能切换功能
-    console.log('🔄 缓存已禁用，强制调用API:', trackingRef);
+    // 临时禁用缓存以测试智能切换功能 - 版本标识: 2025-07-15-10:00
+    console.log('🔄🔄🔄 缓存已禁用，强制调用API (新版本):', trackingRef);
+    console.log('🚀🚀🚀 智能切换功能已激活！');
 
     // TODO: 恢复缓存功能
     // const cacheKey = `tracking_${trackingRef}_${companyId}`;
