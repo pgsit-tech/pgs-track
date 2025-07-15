@@ -219,6 +219,11 @@ async function queryTrackingInfo(trackingRef, companyId = 'default') {
 
         const data = await response.json();
 
+        // 🔍 调试：查看Worker返回的完整数据结构
+        console.log('🔍 Worker返回的完整数据:', JSON.stringify(data, null, 2));
+        console.log('🔍 data.apiVersion:', data.apiVersion);
+        console.log('🔍 data.data:', data.data);
+
         // 检查API响应是否成功
         if (data && (data.success === false || data.code === 404 || data.code >= 400)) {
             throw new Error(data.error || data.description || '查询失败');
