@@ -930,8 +930,13 @@ function renderTrackingTimeline(trackingData, apiVersion = 'v5') {
         html += '</div>';
 
         // 添加小单列表（如果存在）
+        console.log('🔍 检查小单数据:', summary);
+        console.log('🔍 summary.subTrackings:', summary?.subTrackings);
         if (summary && summary.subTrackings && summary.subTrackings.length > 0) {
+            console.log('🔍 渲染小单列表:', summary.subTrackings.length, '个小单');
             html += renderSubTrackingsList(summary.subTrackings);
+        } else {
+            console.log('🔍 没有小单数据或数据为空');
         }
 
         // 添加汇总信息
