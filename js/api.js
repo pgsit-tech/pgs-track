@@ -445,11 +445,13 @@ function formatTrackingData(rawData, apiVersion = 'v5') {
                     const statusName = node.nodeName || node.context || node.description || node.statusName;
                     const timestamp = node.nodeTime || node.time || node.timestamp || node.eventTime;
 
-                    // 只处理有意义的节点（有名称的）
-                    if (!statusName) {
-                        console.log(`🔍 跳过空节点 ${index + 1}`);
+                    // 只处理有意义的节点（有名称且有时间的）
+                    if (!statusName || !timestamp || timestamp.trim() === '') {
+                        console.log(`🔍 跳过无效节点 ${index + 1}: 名称=${statusName}, 时间=${timestamp}`);
                         return null;
                     }
+
+                    console.log(`🔍 有效orderNode ${index + 1}: ${statusName} - ${timestamp}`);
 
                     return {
                         time: timestamp,
@@ -569,7 +571,7 @@ function getStatusPriority(statusName = '') {
     if (nameLower.includes('actual delivery') || nameLower.includes('卡车实际派送') ||
         nameLower.includes('派送完成') || nameLower.includes('delivered') ||
         nameLower.includes('delivered-dl') || nameLower.includes('已送达') ||
-        nameLower.includes('签收')) {
+        nameLower.includes('签收') || nameLower.includes('已提取')) {
         return 100;
     }
 
@@ -633,7 +635,7 @@ function getStatusStyle(status, statusName = '') {
         nameLower.includes('送达') || nameLower.includes('签收') ||
         nameLower.includes('actual delivery') || nameLower.includes('卡车实际派送') ||
         nameLower.includes('派送完成') || nameLower.includes('delivered-dl') ||
-        nameLower.includes('已送达')) {
+        nameLower.includes('已送达') || nameLower.includes('已提取')) {
         return {
             class: 'success',
             icon: 'fas fa-check-circle',
