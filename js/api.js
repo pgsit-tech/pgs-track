@@ -447,26 +447,39 @@ function formatTrackingData(rawData, apiVersion = 'v5') {
         
         // 格式化事件数据 - 适配AU-OPS API格式
         const formattedEvents = events.map((event, index) => {
+            const statusName = event.context || event.statusName || event.eventDescription || event.description;
             const formatted = {
                 id: index + 1,
                 timestamp: event.time || event.eventTime || event.timestamp,
                 status: event.node || event.status || event.eventCode,
-                statusName: event.context || event.statusName || event.eventDescription || event.description,
+                statusName: statusName,
                 location: event.location || event.eventLocation,
                 description: event.context || event.description || event.remark || event.note,
-                isCurrent: index === 0, // 第一个事件为当前状态
-                nodeTime: event.nodeTime
+                isCurrent: false, // 稍后根据状态优先级设置
+                nodeTime: event.nodeTime,
+                // 添加状态优先级，用于正确排序
+                priority: getStatusPriority(statusName)
             };
             console.log(`🔍 格式化事件 ${index + 1}:`, formatted);
             return formatted;
         });
-        
-        // 按时间排序（最新的在前）
+
+        // 按状态优先级和时间排序（派送完成优先，然后按时间排序）
         formattedEvents.sort((a, b) => {
+            // 首先按优先级排序（数字越大优先级越高）
+            if (a.priority !== b.priority) {
+                return b.priority - a.priority;
+            }
+            // 优先级相同时按时间排序（最新的在前）
             const timeA = new Date(a.timestamp).getTime();
             const timeB = new Date(b.timestamp).getTime();
             return timeB - timeA;
         });
+
+        // 设置当前状态（优先级最高的为当前状态）
+        if (formattedEvents.length > 0) {
+            formattedEvents[0].isCurrent = true;
+        }
         
         const result = {
             events: formattedEvents,
@@ -495,6 +508,65 @@ function formatTrackingData(rawData, apiVersion = 'v5') {
 }
 
 /**
+ * 获取状态优先级（用于排序）
+ * @param {string} statusName - 状态名称
+ * @returns {number} 优先级（数字越大优先级越高）
+ */
+function getStatusPriority(statusName = '') {
+    const nameLower = (statusName || '').toLowerCase();
+
+    // 派送完成 - 最高优先级
+    if (nameLower.includes('actual delivery') || nameLower.includes('卡车实际派送') ||
+        nameLower.includes('派送完成') || nameLower.includes('delivered')) {
+        return 100;
+    }
+
+    // 预约派送
+    if (nameLower.includes('appointment') || nameLower.includes('预约派送')) {
+        return 90;
+    }
+
+    // 提柜/取货
+    if (nameLower.includes('pick up') || nameLower.includes('提柜')) {
+        return 80;
+    }
+
+    // 卸柜
+    if (nameLower.includes('discharged') || nameLower.includes('卸柜')) {
+        return 70;
+    }
+
+    // 到港
+    if (nameLower.includes('arrival') || nameLower.includes('到港')) {
+        return 60;
+    }
+
+    // 离港
+    if (nameLower.includes('departure') || nameLower.includes('离港')) {
+        return 50;
+    }
+
+    // 预计时间
+    if (nameLower.includes('estimated') || nameLower.includes('预计')) {
+        return 40;
+    }
+
+    // 入仓
+    if (nameLower.includes('warehouse') || nameLower.includes('入仓')) {
+        return 30;
+    }
+
+    // 订舱/提货
+    if (nameLower.includes('booking') || nameLower.includes('订舱') ||
+        nameLower.includes('提货')) {
+        return 20;
+    }
+
+    // 默认优先级
+    return 10;
+}
+
+/**
  * 获取状态显示样式
  * @param {string} status - 状态代码
  * @param {string} statusName - 状态名称
@@ -504,9 +576,11 @@ function getStatusStyle(status, statusName = '') {
     const statusLower = (status || '').toLowerCase();
     const nameLower = (statusName || '').toLowerCase();
     
-    // 已送达
-    if (statusLower.includes('delivered') || nameLower.includes('delivered') || 
-        nameLower.includes('送达') || nameLower.includes('签收')) {
+    // 已送达/派送完成
+    if (statusLower.includes('delivered') || nameLower.includes('delivered') ||
+        nameLower.includes('送达') || nameLower.includes('签收') ||
+        nameLower.includes('actual delivery') || nameLower.includes('卡车实际派送') ||
+        nameLower.includes('派送完成')) {
         return {
             class: 'success',
             icon: 'fas fa-check-circle',
