@@ -17,6 +17,17 @@ const AU_OPS_CONFIG = {
     timeout: 30000
 };
 
+// 官网API配置（优先数据源）
+const OFFICIAL_API_CONFIG = {
+    baseUrl: 'http://cbel.pgs-log.com/edi/pubTracking',
+    timeout: 5000, // 5秒超时，快速切换到备选方案
+    params: {
+        host: 'cbel.pgs-log.com',
+        noSubTracking: 'false', // 获取完整的subTrackings数据
+        url: '/public-tracking'
+    }
+};
+
 // 动态公司配置 - 从KV存储或环境变量获取
 let DYNAMIC_COMPANY_CONFIGS = null;
 
@@ -109,7 +120,81 @@ async function handleRequest(request, env) {
 }
 
 /**
- * 处理轨迹查询请求
+ * 调用官网API获取完整数据（包含subTrackings）
+ */
+async function callOfficialAPI(trackingRef) {
+    console.log('🌐 尝试官网API:', OFFICIAL_API_CONFIG.baseUrl);
+
+    try {
+        const url = new URL(OFFICIAL_API_CONFIG.baseUrl);
+        url.searchParams.set('host', OFFICIAL_API_CONFIG.params.host);
+        url.searchParams.set('noSubTracking', OFFICIAL_API_CONFIG.params.noSubTracking);
+        url.searchParams.set('soNum', trackingRef);
+        url.searchParams.set('url', OFFICIAL_API_CONFIG.params.url);
+
+        console.log('🔗 官网API完整URL:', url.toString());
+
+        const response = await fetch(url.toString(), {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'User-Agent': 'PGS-Tracking-System/1.0'
+            },
+            signal: AbortSignal.timeout(OFFICIAL_API_CONFIG.timeout)
+        });
+
+        console.log('📡 官网API响应状态:', response.status);
+
+        if (!response.ok) {
+            throw new Error(`官网API调用失败: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log('📦 官网API返回数据类型:', typeof data);
+
+        // 检查是否是数组格式（官网API返回数组）
+        if (Array.isArray(data) && data.length > 0) {
+            const trackingData = data[0]; // 取第一个结果
+            console.log('✅ 官网API返回有效数据');
+            console.log('📦 包含subTrackings:', trackingData.subTrackings ? trackingData.subTrackings.length : 0, '个');
+
+            // 🔍 详细调试：查看官网API返回的完整数据结构
+            console.log('🔍 官网API完整数据结构:');
+            console.log('🔍 主要字段:', Object.keys(trackingData));
+            console.log('🔍 dataList:', trackingData.dataList ? trackingData.dataList.length : 0, '个主轨迹事件');
+            console.log('🔍 orderNodes:', trackingData.orderNodes ? trackingData.orderNodes.length : 0, '个订单节点');
+            console.log('🔍 subTrackings:', trackingData.subTrackings ? trackingData.subTrackings.length : 0, '个小单');
+
+            // 显示前3个主轨迹事件的结构
+            if (trackingData.dataList && trackingData.dataList.length > 0) {
+                console.log('🔍 主轨迹事件示例:', trackingData.dataList.slice(0, 3));
+            }
+
+            // 显示前2个小单的结构
+            if (trackingData.subTrackings && trackingData.subTrackings.length > 0) {
+                console.log('🔍 小单结构示例:', trackingData.subTrackings.slice(0, 2));
+            }
+            return {
+                success: true,
+                data: trackingData,
+                source: 'official'
+            };
+        } else {
+            throw new Error('官网API返回空数据');
+        }
+
+    } catch (error) {
+        console.error('❌ 官网API调用失败:', error.message);
+        return {
+            success: false,
+            error: error.message,
+            source: 'official'
+        };
+    }
+}
+
+/**
+ * 处理轨迹查询请求（智能切换方案）
  * @param {Request} request - 请求对象
  * @param {string} apiPath - API路径
  * @returns {Response} 响应对象
@@ -128,6 +213,36 @@ async function handleTrackingRequest(request, apiPath, env) {
         if (!isValidTrackingRef(trackingRef)) {
             return createErrorResponse('查询参数格式错误', 400);
         }
+
+        // 🚀 智能切换方案：优先官网API，失败则切换AU-OPS API
+        console.log('🚀 开始智能切换查询方案');
+
+        // 1. 优先尝试官网API（5秒超时）
+        const officialResult = await callOfficialAPI(trackingRef);
+
+        if (officialResult.success) {
+            console.log('✅ 官网API查询成功，返回完整数据');
+
+            const responseData = {
+                success: true,
+                trackingRef: trackingRef,
+                apiVersion: 'official',
+                data: officialResult.data,
+                timestamp: new Date().toISOString(),
+                companyId: 'official',
+                companyName: 'CBEL官网',
+                proxy: {
+                    version: '1.0.0',
+                    endpoint: 'official-api',
+                    source: 'official'
+                }
+            };
+
+            return createSuccessResponse(responseData, request.headers.get('Origin'), env);
+        }
+
+        // 2. 官网API失败，切换到AU-OPS API备选方案
+        console.log('⚠️ 官网API失败，切换到AU-OPS API备选方案');
 
         // 从KV存储获取动态公司配置
         const companyConfigs = await getDynamicCompanyConfigs(env);
@@ -263,7 +378,8 @@ async function handleTrackingRequest(request, apiPath, env) {
             companyName: selectedCompany.name,
             proxy: {
                 version: '1.0.0',
-                endpoint: apiPath
+                endpoint: apiPath,
+                source: 'au-ops-fallback' // 标记这是备选方案
             }
         };
 
