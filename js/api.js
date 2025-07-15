@@ -421,7 +421,32 @@ function formatTrackingData(rawData, apiVersion = 'v5') {
         
         if (apiVersion === 'v5') {
             // v5 API数据结构处理 - AU-OPS API格式
-            events = rawData.dataList || rawData.events || rawData.trackingEvents || [];
+            // 合并 dataList 和 orderNodes 两个数据源
+            const dataListEvents = rawData.dataList || [];
+            const orderNodesEvents = rawData.orderNodes || [];
+
+            // 将两个数据源合并，orderNodes 通常包含派送/小单动态信息
+            events = [...dataListEvents];
+
+            // 处理 orderNodes 数据，转换为统一格式
+            if (orderNodesEvents.length > 0) {
+                console.log('🔍 发现orderNodes数据:', orderNodesEvents.length, '个节点');
+                const convertedOrderNodes = orderNodesEvents.map(node => ({
+                    time: node.time || node.timestamp || node.eventTime,
+                    context: node.context || node.description || node.statusName || node.eventDescription,
+                    node: node.node || node.status || node.eventCode,
+                    location: node.location || node.eventLocation,
+                    // 标记这是来自orderNodes的数据
+                    source: 'orderNodes',
+                    // 保留原始数据
+                    originalData: node
+                }));
+
+                // 将转换后的orderNodes数据添加到events中
+                events = [...events, ...convertedOrderNodes];
+                console.log('🔍 合并后的events数据:', events.length, '个事件');
+            }
+
             console.log('🔍 提取的events数据:', events);
 
             summary = {
@@ -517,7 +542,8 @@ function getStatusPriority(statusName = '') {
 
     // 派送完成 - 最高优先级
     if (nameLower.includes('actual delivery') || nameLower.includes('卡车实际派送') ||
-        nameLower.includes('派送完成') || nameLower.includes('delivered')) {
+        nameLower.includes('派送完成') || nameLower.includes('delivered') ||
+        nameLower.includes('delivered-dl') || nameLower.includes('已送达')) {
         return 100;
     }
 
@@ -580,7 +606,8 @@ function getStatusStyle(status, statusName = '') {
     if (statusLower.includes('delivered') || nameLower.includes('delivered') ||
         nameLower.includes('送达') || nameLower.includes('签收') ||
         nameLower.includes('actual delivery') || nameLower.includes('卡车实际派送') ||
-        nameLower.includes('派送完成')) {
+        nameLower.includes('派送完成') || nameLower.includes('delivered-dl') ||
+        nameLower.includes('已送达')) {
         return {
             class: 'success',
             icon: 'fas fa-check-circle',
