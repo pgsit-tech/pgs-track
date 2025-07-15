@@ -438,41 +438,42 @@ function formatTrackingData(rawData, apiVersion = 'v5') {
                 // 官网API数据结构处理
                 console.log('🌐 处理官网API数据结构');
 
-                // 官网API数据结构：dataList(主轨迹), orderNodes, subTrackings(小单)
-                const dataListEvents = rawData.dataList || [];
-                const orderNodesEvents = rawData.orderNodes || [];
+                // 官网API数据结构：trackings(主轨迹), headNodes, subTrackings(小单)
+                const trackingsEvents = rawData.trackings || [];
+                const headNodesEvents = rawData.headNodes || [];
                 const subTrackings = rawData.subTrackings || [];
 
                 console.log('🔍 官网API数据结构分析:');
-                console.log('🔍 dataList(主轨迹):', dataListEvents.length, '个事件');
-                console.log('🔍 orderNodes:', orderNodesEvents.length, '个节点');
+                console.log('🔍 trackings(主轨迹):', trackingsEvents.length, '个事件');
+                console.log('🔍 headNodes:', headNodesEvents.length, '个节点');
                 console.log('🔍 subTrackings(小单):', subTrackings.length, '个快递单号');
 
-                // 主要轨迹数据：只使用dataList和orderNodes，不包含subTrackings
-                events = [...dataListEvents];
+                // 主要轨迹数据：使用trackings和headNodes，不包含subTrackings
+                events = [...trackingsEvents];
 
-                // 处理 orderNodes 数据，转换为统一格式
-                if (orderNodesEvents && orderNodesEvents.length > 0) {
-                    const convertedOrderNodes = orderNodesEvents.map((node, index) => {
-                        const statusName = node.nodeName || node.context || node.description || node.statusName;
-                        const timestamp = node.nodeTime || node.time || node.timestamp || node.eventTime;
+                // 处理 headNodes 数据，转换为统一格式
+                if (headNodesEvents && headNodesEvents.length > 0) {
+                    const convertedHeadNodes = headNodesEvents.map((node, index) => {
+                        const statusName = node.context || node.nodeName || node.description || node.statusName;
+                        const timestamp = node.time || node.nodeTime || node.timestamp || node.eventTime;
 
-                        if (!statusName || !timestamp || timestamp === '' || (typeof timestamp === 'string' && timestamp.trim() === '')) {
+                        // 跳过没有时间或时间为空字符串的节点
+                        if (!timestamp || timestamp === '' || (typeof timestamp === 'string' && timestamp.trim() === '')) {
                             return null;
                         }
 
                         return {
                             time: timestamp,
-                            context: statusName,
+                            context: statusName || `节点: ${node.node}`,
                             node: node.node || 'main',
                             location: node.location || node.eventLocation || '',
-                            source: 'orderNodes',
+                            source: 'headNodes',
                             originalData: node
                         };
                     }).filter(Boolean);
 
-                    events = [...events, ...convertedOrderNodes];
-                    console.log('🔍 添加orderNodes后的主轨迹events:', events.length, '个事件');
+                    events = [...events, ...convertedHeadNodes];
+                    console.log('🔍 添加headNodes后的主轨迹events:', events.length, '个事件');
                 }
 
                 // 处理 subTrackings 数据（小单列表），但不混合到主轨迹中
