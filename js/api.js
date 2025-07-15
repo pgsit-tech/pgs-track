@@ -440,9 +440,20 @@ function formatTrackingData(rawData, apiVersion = 'v5') {
 
                 const convertedOrderNodes = orderNodesEvents.map((node, index) => {
                     console.log(`🔍 处理orderNode ${index + 1}:`, node);
+
+                    // orderNodes使用不同的字段名：nodeName 和 nodeTime
+                    const statusName = node.nodeName || node.context || node.description || node.statusName;
+                    const timestamp = node.nodeTime || node.time || node.timestamp || node.eventTime;
+
+                    // 只处理有意义的节点（有名称的）
+                    if (!statusName) {
+                        console.log(`🔍 跳过空节点 ${index + 1}`);
+                        return null;
+                    }
+
                     return {
-                        time: node.time || node.timestamp || node.eventTime || node.nodeTime,
-                        context: node.context || node.description || node.statusName || node.eventDescription || node.note,
+                        time: timestamp,
+                        context: statusName,
                         node: node.node || node.status || node.eventCode || node.statusCode,
                         location: node.location || node.eventLocation,
                         // 标记这是来自orderNodes的数据
@@ -450,7 +461,7 @@ function formatTrackingData(rawData, apiVersion = 'v5') {
                         // 保留原始数据
                         originalData: node
                     };
-                });
+                }).filter(node => node !== null); // 过滤掉空节点
 
                 console.log('🔍 转换后的orderNodes:', convertedOrderNodes);
 
@@ -557,7 +568,8 @@ function getStatusPriority(statusName = '') {
     // 派送完成 - 最高优先级
     if (nameLower.includes('actual delivery') || nameLower.includes('卡车实际派送') ||
         nameLower.includes('派送完成') || nameLower.includes('delivered') ||
-        nameLower.includes('delivered-dl') || nameLower.includes('已送达')) {
+        nameLower.includes('delivered-dl') || nameLower.includes('已送达') ||
+        nameLower.includes('签收')) {
         return 100;
     }
 
