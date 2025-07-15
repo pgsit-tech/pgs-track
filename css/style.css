@@ -687,3 +687,140 @@ body {
     from { opacity: 1; transform: translateY(0); }
     to { opacity: 0; transform: translateY(-20px); }
 }
+
+/* ===================================
+   小单列表样式
+   =================================== */
+
+.sub-trackings-list {
+    border: 1px solid var(--gray-200);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    background: white;
+}
+
+.sub-tracking-item {
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.sub-tracking-item:last-child {
+    border-bottom: none;
+}
+
+.sub-tracking-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    background: white;
+}
+
+.sub-tracking-header:hover {
+    background: var(--gray-50);
+}
+
+.sub-tracking-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.sub-tracking-number {
+    font-weight: 600;
+    color: var(--gray-800);
+    font-size: 0.95rem;
+}
+
+.sub-tracking-status {
+    font-size: 0.875rem;
+    color: var(--gray-600);
+}
+
+.sub-tracking-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    text-align: right;
+}
+
+.sub-tracking-time {
+    font-size: 0.875rem;
+    color: var(--gray-500);
+}
+
+.sub-tracking-toggle {
+    color: var(--gray-400);
+    transition: var(--transition-fast);
+}
+
+.sub-tracking-header:hover .sub-tracking-toggle {
+    color: var(--primary-color);
+}
+
+.sub-tracking-details {
+    border-top: 1px solid var(--gray-200);
+    background: var(--gray-50);
+    padding: 1rem;
+}
+
+.sub-tracking-timeline {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.sub-timeline-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.sub-timeline-item:last-child {
+    border-bottom: none;
+}
+
+.sub-timeline-content {
+    flex: 1;
+}
+
+.sub-timeline-status {
+    font-weight: 500;
+    color: var(--gray-800);
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+}
+
+.sub-timeline-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.sub-timeline-time,
+.sub-timeline-location {
+    font-size: 0.8rem;
+    color: var(--gray-500);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .sub-tracking-header {
+        padding: 0.75rem;
+    }
+
+    .sub-tracking-meta {
+        flex-direction: column;
+        gap: 0.25rem;
+        align-items: flex-end;
+    }
+
+    .sub-tracking-details {
+        padding: 0.75rem;
+    }
+
+    .sub-timeline-item {
+        padding: 0.5rem 0;
+    }
+}

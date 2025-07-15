@@ -887,7 +887,7 @@ function renderTrackingTimeline(trackingData) {
             </div>
         `;
     } else {
-        // 渲染时间线
+        // 渲染主轨迹时间线
         html = '<div class="tracking-timeline">';
 
         events.forEach((event, index) => {
@@ -928,6 +928,11 @@ function renderTrackingTimeline(trackingData) {
 
         html += '</div>';
 
+        // 添加小单列表（如果存在）
+        if (summary && summary.subTrackings && summary.subTrackings.length > 0) {
+            html += renderSubTrackingsList(summary.subTrackings);
+        }
+
         // 添加汇总信息
         if (summary && summary.totalEvents > 0) {
             html += `
@@ -962,6 +967,129 @@ function renderTrackingTimeline(trackingData) {
     }
 
     Elements.resultsContent.innerHTML = html;
+}
+
+/**
+ * 渲染小单列表
+ * @param {Array} subTrackings - 小单数据数组
+ * @returns {string} HTML字符串
+ */
+function renderSubTrackingsList(subTrackings) {
+    if (!subTrackings || subTrackings.length === 0) {
+        return '';
+    }
+
+    let html = `
+        <div class="mt-4">
+            <h6 class="mb-3">
+                <i class="fas fa-truck me-2"></i>
+                派送/小单动态
+            </h6>
+            <div class="sub-trackings-list">
+    `;
+
+    subTrackings.forEach((subTracking, index) => {
+        const statusStyle = TrackingAPI.getStatusStyle('', subTracking.status);
+
+        html += `
+            <div class="sub-tracking-item" data-tracking-num="${subTracking.trackingNum}">
+                <div class="sub-tracking-header" onclick="toggleSubTrackingDetails('${subTracking.trackingNum}')">
+                    <div class="sub-tracking-info">
+                        <div class="sub-tracking-number">
+                            <i class="fas fa-box me-2"></i>
+                            ${subTracking.trackingNum}
+                        </div>
+                        <div class="sub-tracking-status">
+                            <i class="${statusStyle.icon} me-1" style="color: ${statusStyle.color}"></i>
+                            ${subTracking.status}
+                        </div>
+                    </div>
+                    <div class="sub-tracking-meta">
+                        <div class="sub-tracking-time">
+                            ${subTracking.lastUpdate ? TrackingUtils.formatTimestamp(subTracking.lastUpdate, 'datetime') : '未知时间'}
+                        </div>
+                        <div class="sub-tracking-toggle">
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-tracking-details" id="sub-tracking-${subTracking.trackingNum}" style="display: none;">
+                    <div class="sub-tracking-timeline">
+                        ${renderSubTrackingTimeline(subTracking.trackings)}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    html += `
+            </div>
+        </div>
+    `;
+
+    return html;
+}
+
+/**
+ * 渲染小单轨迹时间线
+ * @param {Array} trackings - 小单轨迹事件数组
+ * @returns {string} HTML字符串
+ */
+function renderSubTrackingTimeline(trackings) {
+    if (!trackings || trackings.length === 0) {
+        return '<div class="text-muted text-center py-3">暂无轨迹信息</div>';
+    }
+
+    let html = '';
+    trackings.forEach((tracking, index) => {
+        const statusStyle = TrackingAPI.getStatusStyle('', tracking.context);
+
+        html += `
+            <div class="sub-timeline-item">
+                <div class="sub-timeline-content">
+                    <div class="sub-timeline-status">
+                        <i class="${statusStyle.icon} me-2" style="color: ${statusStyle.color}"></i>
+                        ${tracking.context}
+                    </div>
+                    <div class="sub-timeline-meta">
+                        <div class="sub-timeline-time">
+                            <i class="fas fa-clock me-1"></i>
+                            ${TrackingUtils.formatTimestamp(tracking.time, 'datetime')}
+                        </div>
+                        ${tracking.location ? `
+                            <div class="sub-timeline-location">
+                                <i class="fas fa-map-marker-alt me-1"></i>
+                                ${tracking.location}
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    return html;
+}
+
+/**
+ * 切换小单详情显示
+ * @param {string} trackingNum - 小单号
+ */
+function toggleSubTrackingDetails(trackingNum) {
+    const detailsElement = document.getElementById(`sub-tracking-${trackingNum}`);
+    const toggleIcon = document.querySelector(`[data-tracking-num="${trackingNum}"] .sub-tracking-toggle i`);
+
+    if (detailsElement) {
+        if (detailsElement.style.display === 'none') {
+            detailsElement.style.display = 'block';
+            toggleIcon.classList.remove('fa-chevron-down');
+            toggleIcon.classList.add('fa-chevron-up');
+        } else {
+            detailsElement.style.display = 'none';
+            toggleIcon.classList.remove('fa-chevron-up');
+            toggleIcon.classList.add('fa-chevron-down');
+        }
+    }
 }
 
 /**
