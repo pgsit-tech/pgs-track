@@ -584,6 +584,7 @@ function formatTrackingData(rawData, apiVersion = 'v5') {
             console.log('🔍 提取的events数据:', events);
 
             // 保存之前设置的subTrackings数据
+            console.log('🔍 重建summary前的subTrackings:', summary.subTrackings);
             const existingSubTrackings = summary.subTrackings;
 
             summary = {
