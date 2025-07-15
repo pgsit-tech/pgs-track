@@ -429,22 +429,36 @@ function formatTrackingData(rawData, apiVersion = 'v5') {
             events = [...dataListEvents];
 
             // 处理 orderNodes 数据，转换为统一格式
-            if (orderNodesEvents.length > 0) {
+            console.log('🔍 orderNodes原始数据:', orderNodesEvents);
+            console.log('🔍 orderNodes数量:', orderNodesEvents.length);
+
+            if (orderNodesEvents && orderNodesEvents.length > 0) {
                 console.log('🔍 发现orderNodes数据:', orderNodesEvents.length, '个节点');
-                const convertedOrderNodes = orderNodesEvents.map(node => ({
-                    time: node.time || node.timestamp || node.eventTime,
-                    context: node.context || node.description || node.statusName || node.eventDescription,
-                    node: node.node || node.status || node.eventCode,
-                    location: node.location || node.eventLocation,
-                    // 标记这是来自orderNodes的数据
-                    source: 'orderNodes',
-                    // 保留原始数据
-                    originalData: node
-                }));
+
+                // 检查orderNodes的数据结构
+                console.log('🔍 第一个orderNode示例:', orderNodesEvents[0]);
+
+                const convertedOrderNodes = orderNodesEvents.map((node, index) => {
+                    console.log(`🔍 处理orderNode ${index + 1}:`, node);
+                    return {
+                        time: node.time || node.timestamp || node.eventTime || node.nodeTime,
+                        context: node.context || node.description || node.statusName || node.eventDescription || node.note,
+                        node: node.node || node.status || node.eventCode || node.statusCode,
+                        location: node.location || node.eventLocation,
+                        // 标记这是来自orderNodes的数据
+                        source: 'orderNodes',
+                        // 保留原始数据
+                        originalData: node
+                    };
+                });
+
+                console.log('🔍 转换后的orderNodes:', convertedOrderNodes);
 
                 // 将转换后的orderNodes数据添加到events中
                 events = [...events, ...convertedOrderNodes];
                 console.log('🔍 合并后的events数据:', events.length, '个事件');
+            } else {
+                console.log('🔍 orderNodes为空或不存在');
             }
 
             console.log('🔍 提取的events数据:', events);
