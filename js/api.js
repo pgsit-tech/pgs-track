@@ -445,13 +445,21 @@ function formatTrackingData(rawData, apiVersion = 'v5') {
                     const statusName = node.nodeName || node.context || node.description || node.statusName;
                     const timestamp = node.nodeTime || node.time || node.timestamp || node.eventTime;
 
+                    // 详细调试信息
+                    console.log(`🔍 详细分析orderNode ${index + 1}:`);
+                    console.log(`  - statusName: "${statusName}" (类型: ${typeof statusName})`);
+                    console.log(`  - timestamp: "${timestamp}" (类型: ${typeof timestamp})`);
+                    console.log(`  - !statusName: ${!statusName}`);
+                    console.log(`  - !timestamp: ${!timestamp}`);
+                    console.log(`  - timestamp === '': ${timestamp === ''}`);
+
                     // 只处理有意义的节点（有名称且有时间的）
                     if (!statusName || !timestamp || timestamp === '' || (typeof timestamp === 'string' && timestamp.trim() === '')) {
-                        console.log(`🔍 跳过无效节点 ${index + 1}: 名称=${statusName}, 时间=${timestamp}, 类型=${typeof timestamp}`);
+                        console.log(`🔍 ❌ 跳过无效节点 ${index + 1}: 名称="${statusName}", 时间="${timestamp}", 类型=${typeof timestamp}`);
                         return null;
                     }
 
-                    console.log(`🔍 有效orderNode ${index + 1}: ${statusName} - ${timestamp}`);
+                    console.log(`🔍 ✅ 有效orderNode ${index + 1}: ${statusName} - ${timestamp}`);
 
                     return {
                         time: timestamp,
