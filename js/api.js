@@ -447,6 +447,7 @@ function formatTrackingData(rawData, apiVersion = 'v5') {
                 console.log('🔍 trackings(主轨迹):', trackingsEvents.length, '个事件');
                 console.log('🔍 headNodes:', headNodesEvents.length, '个节点');
                 console.log('🔍 subTrackings(小单):', subTrackings.length, '个快递单号');
+                console.log('🚀 NEW CODE VERSION 20250715104800 - 使用新的字段名称');
 
                 // 主要轨迹数据：使用trackings和headNodes，不包含subTrackings
                 events = [...trackingsEvents];
