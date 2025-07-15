@@ -583,6 +583,9 @@ function formatTrackingData(rawData, apiVersion = 'v5') {
 
             console.log('🔍 提取的events数据:', events);
 
+            // 保存之前设置的subTrackings数据
+            const existingSubTrackings = summary.subTrackings;
+
             summary = {
                 status: rawData.status || rawData.currentStatus,
                 statusName: rawData.statusName || rawData.currentStatusName || rawData.status,
@@ -590,7 +593,8 @@ function formatTrackingData(rawData, apiVersion = 'v5') {
                 totalEvents: events.length,
                 jobNum: rawData.jobNum,
                 destCountryCode: rawData.destCountryCode,
-                packages: rawData.packages
+                packages: rawData.packages,
+                subTrackings: existingSubTrackings // 保留小单数据
             };
             console.log('🔍 生成的summary:', summary);
         } else if (apiVersion === 'v3') {
