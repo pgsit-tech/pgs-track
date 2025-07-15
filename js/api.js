@@ -448,33 +448,11 @@ function formatTrackingData(rawData, apiVersion = 'v5') {
                 console.log('🔍 headNodes:', headNodesEvents.length, '个节点');
                 console.log('🔍 subTrackings(小单):', subTrackings.length, '个快递单号');
 
-                // 主要轨迹数据：使用trackings和headNodes，不包含subTrackings
+                // 主要轨迹数据：只使用trackings，不包含headNodes和subTrackings
+                // headNodes只用于顶部进度条显示，不作为轨迹事件
                 events = [...trackingsEvents];
 
-                // 处理 headNodes 数据，转换为统一格式
-                if (headNodesEvents && headNodesEvents.length > 0) {
-                    const convertedHeadNodes = headNodesEvents.map((node, index) => {
-                        const statusName = node.context || node.nodeName || node.description || node.statusName;
-                        const timestamp = node.time || node.nodeTime || node.timestamp || node.eventTime;
-
-                        // 跳过没有时间或时间为空字符串的节点
-                        if (!timestamp || timestamp === '' || (typeof timestamp === 'string' && timestamp.trim() === '')) {
-                            return null;
-                        }
-
-                        return {
-                            time: timestamp,
-                            context: statusName || `节点: ${node.node}`,
-                            node: node.node || 'main',
-                            location: node.location || node.eventLocation || '',
-                            source: 'headNodes',
-                            originalData: node
-                        };
-                    }).filter(Boolean);
-
-                    events = [...events, ...convertedHeadNodes];
-                    console.log('🔍 添加headNodes后的主轨迹events:', events.length, '个事件');
-                }
+                console.log('🔍 主轨迹events（仅trackings）:', events.length, '个事件');
 
                 // 处理 subTrackings 数据（小单列表），但不混合到主轨迹中
                 let subTrackingsList = [];
