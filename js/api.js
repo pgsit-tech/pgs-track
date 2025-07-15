@@ -232,7 +232,7 @@ async function queryTrackingInfo(trackingRef, companyId = 'default') {
         const result = {
             success: true,
             trackingRef: trackingRef,
-            apiVersion: 'v5',
+            apiVersion: data.apiVersion || 'v5', // 使用Worker返回的实际API版本
             data: data,
             timestamp: new Date().toISOString(),
             companyId: companyId
