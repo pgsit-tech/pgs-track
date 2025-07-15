@@ -547,40 +547,37 @@ function formatTrackingData(rawData, apiVersion = 'v5') {
                     events = [...events, ...convertedOrderNodes];
                 }
 
-                // 处理 subTrackings 数据（派送/小单动态）- AU-OPS API格式
+                // 处理 subTrackings 数据（小单列表）- AU-OPS API格式，但不混合到主轨迹中
+                let subTrackingsList = [];
                 if (subTrackings && subTrackings.length > 0) {
-                    console.log('🔍 发现subTrackings数据:', subTrackings.length, '个快递单号');
+                    console.log('🔍 处理subTrackings数据:', subTrackings.length, '个快递单号');
 
-                    // 提取所有子跟踪的轨迹事件
-                    const subTrackingEvents = [];
-                    subTrackings.forEach((subTracking, index) => {
+                    subTrackingsList = subTrackings.map((subTracking, index) => {
                         const trackingNum = subTracking.trackingNum;
                         const trackings = subTracking.trackings || [];
 
                         console.log(`🔍 处理快递单号 ${trackingNum}:`, trackings.length, '个事件');
 
-                        // 转换每个子跟踪事件
-                        trackings.forEach(tracking => {
-                            if (tracking.time && tracking.context) {
-                                subTrackingEvents.push({
-                                    time: tracking.time,
-                                    context: `[${trackingNum}] ${tracking.context}`,
-                                    node: tracking.node || 'express',
-                                    location: tracking.location || tracking.eventLocation,
-                                    // 标记这是来自subTrackings的数据
-                                    source: 'subTrackings',
-                                    trackingNum: trackingNum,
-                                    // 保留原始数据
-                                    originalData: tracking
-                                });
-                            }
-                        });
+                        // 获取最新状态（第一个事件通常是最新的）
+                        const latestEvent = trackings.length > 0 ? trackings[0] : null;
+                        const status = latestEvent ? latestEvent.context : '未知状态';
+                        const lastUpdate = latestEvent ? latestEvent.time : null;
+
+                        return {
+                            trackingNum: trackingNum,
+                            status: status,
+                            lastUpdate: lastUpdate,
+                            totalEvents: trackings.length,
+                            trackings: trackings, // 保留完整轨迹数据，供点击查看详情使用
+                            source: 'subTrackings'
+                        };
                     });
 
-                    // 将子跟踪事件添加到主事件列表中
-                    events = [...events, ...subTrackingEvents];
-                    console.log('🔍 添加subTrackings后的events数据:', events.length, '个事件');
+                    console.log('🔍 处理后的小单列表:', subTrackingsList.length, '个小单');
                 }
+
+                // 将小单列表添加到结果中，但不混合到主轨迹events中
+                summary.subTrackings = subTrackingsList;
             }
 
             console.log('🔍 提取的events数据:', events);

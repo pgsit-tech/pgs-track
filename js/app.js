@@ -553,7 +553,7 @@ function showSingleSearchResults(data) {
     }
 
     // 渲染轨迹时间线
-    renderTrackingTimeline(data.formattedData);
+    renderTrackingTimeline(data.formattedData, data.result.apiVersion);
 
     // 显示结果区域
     Elements.resultsSection.classList.remove('d-none');
@@ -869,8 +869,9 @@ function updateInputPlaceholder(searchType) {
 /**
  * 渲染轨迹时间线
  * @param {Object} trackingData - 格式化的轨迹数据
+ * @param {string} apiVersion - API版本
  */
-function renderTrackingTimeline(trackingData) {
+function renderTrackingTimeline(trackingData, apiVersion = 'v5') {
     if (!Elements.resultsContent || !trackingData) return;
 
     const { events, summary } = trackingData;
@@ -958,7 +959,7 @@ function renderTrackingTimeline(trackingData) {
                         </div>
                         <div class="col-md-3">
                             <small class="text-muted">数据来源</small>
-                            <div class="fw-bold">AU-OPS API</div>
+                            <div class="fw-bold">${apiVersion === 'official' ? 'CBEL官网API' : 'AU-OPS API'}</div>
                         </div>
                     </div>
                 </div>
