@@ -446,8 +446,8 @@ function formatTrackingData(rawData, apiVersion = 'v5') {
                     const timestamp = node.nodeTime || node.time || node.timestamp || node.eventTime;
 
                     // 只处理有意义的节点（有名称且有时间的）
-                    if (!statusName || !timestamp || timestamp.trim() === '') {
-                        console.log(`🔍 跳过无效节点 ${index + 1}: 名称=${statusName}, 时间=${timestamp}`);
+                    if (!statusName || !timestamp || timestamp === '' || (typeof timestamp === 'string' && timestamp.trim() === '')) {
+                        console.log(`🔍 跳过无效节点 ${index + 1}: 名称=${statusName}, 时间=${timestamp}, 类型=${typeof timestamp}`);
                         return null;
                     }
 
