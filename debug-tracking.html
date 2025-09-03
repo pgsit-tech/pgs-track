@@ -113,15 +113,8 @@
             const hostname = window.location.hostname;
             log(`当前访问域名: ${hostname}`);
             
-            if (hostname.includes('localhost') || hostname.includes('127.0.0.1')) {
-                return 'https://pgs-tracking-proxy.itsupport-5c8.workers.dev/api/tracking';
-            }
-            
-            if (hostname.includes('pages.dev') || hostname.includes('your-domain.com')) {
-                return 'https://track-api.20990909.xyz/api/tracking';
-            }
-            
-            return 'https://pgs-tracking-proxy.itsupport-5c8.workers.dev/api/tracking';
+            // 统一使用自定义域名
+            return 'https://track-api.20990909.xyz/api/tracking';
         }
 
         // 初始化页面信息
@@ -195,8 +188,7 @@
             resultDiv.textContent = '测试中...';
 
             const tests = [
-                { name: '自定义域名API', url: 'https://track-api.20990909.xyz/api/tracking/v5/tracking?trackingRef=TEST' },
-                { name: 'Workers域名API', url: 'https://pgs-tracking-proxy.itsupport-5c8.workers.dev/api/tracking/v5/tracking?trackingRef=TEST' }
+                { name: '自定义域名API', url: 'https://track-api.20990909.xyz/api/tracking/v5/tracking?trackingRef=TEST' }
             ];
 
             let results = '';

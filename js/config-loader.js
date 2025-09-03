@@ -23,12 +23,14 @@ async function loadSiteConfig() {
 
         // 1. 首先尝试从Workers代理获取配置（添加缓存破坏参数）
         try {
-            const kvResponse = await fetch(`https://pgs-tracking-proxy.itsupport-5c8.workers.dev/config/site?t=${Date.now()}`, {
+            const kvResponse = await fetch(`https://track-api.20990909.xyz/config/site?t=${Date.now()}&v=20250903093500`, {
                 method: 'GET',
                 headers: {
                     'Origin': window.location.origin,
                     'Accept': 'application/json',
-                    'Cache-Control': 'no-cache'
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
                 }
             });
 
