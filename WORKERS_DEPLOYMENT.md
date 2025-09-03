@@ -6,19 +6,38 @@
 - ✅ **Cloudflare Pages**: https://pgs-track.pages.dev
 - ⏳ **Cloudflare Workers**: 待部署
 
+## 🆕 最新更新 (2025-01-03)
+
+### 修复内容
+1. **🌐 CDN资源优化**
+   - 替换为国内可访问的CDN链接
+   - Bootstrap、Font Awesome、Google Fonts使用国内CDN
+   - 解决国内网络环境加载问题
+
+2. **🔇 日志输出优化**
+   - 添加调试模式开关
+   - 生产环境只显示错误和警告信息
+   - 减少不必要的控制台输出
+
+3. **🚫 API查询简化**
+   - 屏蔽AU-OPS API备选查询
+   - 只使用官网API (cbel.pgs-log.com)
+   - 简化查询流程，提高响应速度
+
 ## 🚀 Workers 部署步骤
 
 ### 方法1: 使用自动化脚本（推荐）
 
-#### PowerShell脚本
+#### PowerShell脚本（推荐）
 ```powershell
 .\deploy-workers.ps1
 ```
 
-#### 批处理脚本
-```batch
-deploy-workers.bat
-```
+> 🆕 **新增功能**:
+> - 自动检查Wrangler安装状态
+> - 验证Cloudflare登录
+> - 显示当前版本修改内容
+> - 自动部署并验证结果
 
 ### 方法2: 手动部署
 
@@ -38,37 +57,40 @@ wrangler login
 wrangler whoami
 ```
 
-#### 4. 设置API密钥
-```bash
-# 公司1 API密钥
-wrangler secret put COMPANY1_APP_KEY
-wrangler secret put COMPANY1_APP_TOKEN
-
-# 公司2 API密钥（如果有）
-wrangler secret put COMPANY2_APP_KEY
-wrangler secret put COMPANY2_APP_TOKEN
-```
-
-#### 5. 部署Workers
+#### 4. 部署Workers
 ```bash
 wrangler deploy --env production
 ```
 
+> ⚠️ **重要变更**:
+> - 已屏蔽AU-OPS API备选查询
+> - 不再需要设置公司API密钥
+> - 只使用官网API进行查询
+
 ## 🔧 配置说明
 
 ### Workers配置文件 (`wrangler.toml`)
+
 ```toml
 name = "pgs-tracking-proxy"
 main = "workers/proxy.js"
 compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
 
 [env.production]
 name = "pgs-tracking-proxy"
 
 [vars]
 ENVIRONMENT = "production"
-API_BASE_URL = "https://ws.ai-ops.vip/edi/web-services"
-CORS_ORIGINS = "https://pgs-track.pages.dev,https://localhost:8080"
+# 🆕 只使用官网API
+OFFICIAL_API_URL = "http://cbel.pgs-log.com/edi/pubTracking"
+CORS_ORIGINS = "https://pgs-track.pages.dev,http://localhost:8080"
+ADMIN_TOKEN = "admin-token-pgs-2025"
+
+# KV存储绑定
+[[kv_namespaces]]
+binding = "CONFIG_KV"
+id = "your-kv-namespace-id"
 ```
 
 ### CORS配置
@@ -76,18 +98,17 @@ Workers已配置允许以下域名访问：
 - `https://pgs-track.pages.dev` (生产环境)
 - `http://localhost:8080` (本地开发)
 
-## 🔐 API密钥管理
+## 🔐 配置管理
 
-### 密钥格式
-- `COMPANY1_APP_KEY`: 公司1的应用密钥
-- `COMPANY1_APP_TOKEN`: 公司1的应用令牌
-- `COMPANY2_APP_KEY`: 公司2的应用密钥（可选）
-- `COMPANY2_APP_TOKEN`: 公司2的应用令牌（可选）
+### 🆕 重要变更
+- ❌ **不再需要API密钥**: 已屏蔽AU-OPS API备选查询
+- ✅ **只使用官网API**: cbel.pgs-log.com (无需认证)
+- ✅ **简化配置**: 减少了复杂的多公司API配置
 
 ### 安全提醒
-- ✅ API密钥通过Wrangler Secrets安全存储
-- ✅ 密钥不会出现在代码中
-- ✅ 只有授权域名可以访问API
+- ✅ 只有授权域名可以访问Workers
+- ✅ CORS配置限制访问来源
+- ✅ 官网API无需额外认证
 
 ## 📱 二维码问题修复
 
