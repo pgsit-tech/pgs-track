@@ -23,15 +23,7 @@ const workerDebugError = console.error;
 // 配置常量
 // ===================================
 
-// AU-OPS API配置
-const AU_OPS_CONFIG = {
-    // 支持两个API地址，优先使用ws.ai-ops.vip（系统方确认的API调用域名）
-    baseUrls: [
-        'https://ws.ai-ops.vip/edi/web-services',
-        'https://prod.au-ops.com/edi/web-services'
-    ],
-    timeout: 30000
-};
+
 
 // 官网API配置（优先数据源）
 const OFFICIAL_API_CONFIG = {
@@ -44,8 +36,7 @@ const OFFICIAL_API_CONFIG = {
     }
 };
 
-// 动态公司配置 - 从KV存储或环境变量获取
-let DYNAMIC_COMPANY_CONFIGS = null;
+
 
 // 获取允许的来源域名（从环境变量或默认值）
 function getAllowedOrigins(env) {
@@ -65,14 +56,7 @@ function getAllowedOrigins(env) {
     return defaultOrigins;
 }
 
-// 支持的API端点
-const SUPPORTED_ENDPOINTS = [
-    '/v5/tracking',
-    '/v3/tracking',
-    '/fms/v2/getOneShipment',
-    '/fms/getSoInfo',
-    '/fms/getShipmentInfo'
-];
+
 
 // ===================================
 // 主要处理函数
@@ -303,50 +287,34 @@ async function handleFMSRequest(request, apiPath, env) {
             queryParams = `shipmentId=${encodeURIComponent(shipmentId)}`;
         }
         
-        // 从KV存储获取动态公司配置
-        const companyConfigs = await getDynamicCompanyConfigs(env);
-        console.log('FMS获取到的公司配置:', Object.keys(companyConfigs));
+        console.log('FMS API请求 (仅官网):', apiPath, '参数:', queryParams);
 
-        // 获取第一个启用且有完整API密钥的公司配置
-        const enabledCompany = Object.values(companyConfigs).find(company =>
-            company.enabled && company.appKey && company.appToken
-        );
+        // 直接使用官网API
+        const officialUrl = `${OFFICIAL_API_CONFIG.baseUrl}${apiPath}?${queryParams}`;
 
-        if (!enabledCompany) {
-            console.error('FMS没有找到可用的API配置，配置详情:', companyConfigs);
-            return createErrorResponse('FMS API配置未完成，请联系管理员', 500);
-        }
-
-        console.log('FMS使用公司配置:', enabledCompany.name);
-
-        // 构建AU-OPS API请求（使用第一个地址）
-        const auOpsUrl = `${AU_OPS_CONFIG.baseUrls[0]}${apiPath}?${queryParams}`;
-
-        const auOpsResponse = await fetch(auOpsUrl, {
+        const response = await fetch(officialUrl, {
             method: 'GET',
             headers: {
-                'Content-Type': 'application/json',
-                'appKey': enabledCompany.appKey,
-                'appToken': enabledCompany.appToken
+                'Content-Type': 'application/json'
             },
-            signal: AbortSignal.timeout(AU_OPS_CONFIG.timeout)
+            signal: AbortSignal.timeout(OFFICIAL_API_CONFIG.timeout)
         });
-        
-        if (!auOpsResponse.ok) {
-            const errorText = await auOpsResponse.text();
-            console.error(`FMS API错误 (${auOpsResponse.status}):`, errorText);
-            return createErrorResponse(`FMS API调用失败: ${auOpsResponse.statusText}`, auOpsResponse.status);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`官网FMS API错误 (${response.status}):`, errorText);
+            return createErrorResponse(`官网FMS API调用失败: ${response.statusText}`, response.status);
         }
-        
-        const data = await auOpsResponse.json();
+
+        const data = await response.json();
         
         // 添加代理信息
         const responseData = {
             success: true,
             data: data,
-            timestamp: new Date().toISOString(),
             proxy: {
-                version: '1.0.0',
+                source: '官网FMS API',
+                timestamp: new Date().toISOString(),
                 endpoint: apiPath
             }
         };
@@ -408,9 +376,10 @@ function handleCORS(request, env) {
  * @returns {boolean} 是否允许
  */
 function isOriginAllowed(origin, env) {
+    // 允许没有Origin头的请求（如直接API调用、curl等）
     if (!origin) {
-        console.log('CORS检查: 无Origin头');
-        return false;
+        console.log('CORS检查: 无Origin头，允许直接API调用');
+        return true;
     }
 
     const allowedOrigins = getAllowedOrigins(env);
@@ -515,64 +484,7 @@ function createErrorResponse(message, status = 400) {
 // Workers事件监听器
 // ===================================
 
-/**
- * 获取动态公司配置
- * @param {Object} env - 环境变量
- * @returns {Object} 公司配置
- */
-async function getDynamicCompanyConfigs(env) {
-    if (DYNAMIC_COMPANY_CONFIGS) {
-        return DYNAMIC_COMPANY_CONFIGS;
-    }
 
-    try {
-        // 1. 尝试从KV存储获取完整站点配置
-        if (env.CONFIG_KV) {
-            const siteConfigData = await env.CONFIG_KV.get('siteConfig');
-            if (siteConfigData) {
-                const rawData = JSON.parse(siteConfigData);
-                console.log('KV原始数据结构:', Object.keys(rawData));
-
-                // 处理两种可能的数据格式
-                let siteConfig;
-                if (rawData.siteConfig) {
-                    // 格式: { "siteConfig": { "api": { "companies": [...] } } }
-                    siteConfig = rawData.siteConfig;
-                } else {
-                    // 格式: { "api": { "companies": [...] } }
-                    siteConfig = rawData;
-                }
-
-                if (siteConfig.api && siteConfig.api.companies) {
-                    // 转换为Worker期望的格式
-                    DYNAMIC_COMPANY_CONFIGS = {};
-                    siteConfig.api.companies.forEach(company => {
-                        DYNAMIC_COMPANY_CONFIGS[company.id] = {
-                            name: company.name,
-                            appKey: company.appKey,
-                            appToken: company.appToken,
-                            priority: company.priority,
-                            enabled: company.enabled
-                        };
-                    });
-                    console.log('✅ 从KV存储加载公司配置:', Object.keys(DYNAMIC_COMPANY_CONFIGS));
-                    return DYNAMIC_COMPANY_CONFIGS;
-                }
-            }
-        }
-
-        // 2. KV配置不存在时返回空配置
-        console.log('⚠️ KV配置不存在，返回空配置');
-        DYNAMIC_COMPANY_CONFIGS = {};
-        return DYNAMIC_COMPANY_CONFIGS;
-
-    } catch (error) {
-        console.error('❌ 获取动态配置失败:', error);
-
-        // 返回空配置，强制使用KV存储
-        return {};
-    }
-}
 
 /**
  * 处理配置更新请求
@@ -772,59 +684,25 @@ export default {
             return handleConfigUpdate(request, env);
         }
 
-        // 处理配置获取请求
-        if (url.pathname === '/config/companies' && request.method === 'GET') {
-            const configs = await getDynamicCompanyConfigs(env);
-            return new Response(JSON.stringify(configs), {
+
+
+        // 调试端点：显示当前API配置
+        if (url.pathname === '/debug/api-config' && request.method === 'GET') {
+            return new Response(JSON.stringify({
+                success: true,
+                message: '当前仅使用官网API',
+                officialApi: {
+                    baseUrl: OFFICIAL_API_CONFIG.baseUrl,
+                    timeout: OFFICIAL_API_CONFIG.timeout
+                },
+                timestamp: new Date().toISOString()
+            }, null, 2), {
                 status: 200,
                 headers: {
                     'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': request.headers.get('Origin') || '*',
-                    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-                    'Access-Control-Allow-Headers': 'Content-Type'
+                    'Access-Control-Allow-Origin': '*'
                 }
             });
-        }
-
-        // 调试端点：查看动态公司配置详情
-        if (url.pathname === '/debug/company-configs' && request.method === 'GET') {
-            try {
-                const configs = await getDynamicCompanyConfigs(env);
-                const enabledCompanies = Object.values(configs).filter(c => c.enabled);
-                const validCompanies = Object.values(configs).filter(c => c.enabled && c.appKey && c.appToken);
-
-                return new Response(JSON.stringify({
-                    success: true,
-                    totalConfigs: Object.keys(configs).length,
-                    configs: configs,
-                    enabledCompanies: enabledCompanies.map(c => ({
-                        name: c.name,
-                        hasAppKey: !!c.appKey,
-                        hasAppToken: !!c.appToken,
-                        enabled: c.enabled
-                    })),
-                    validCompanies: validCompanies.map(c => c.name),
-                    validCount: validCompanies.length
-                }, null, 2), {
-                    status: 200,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Access-Control-Allow-Origin': '*'
-                    }
-                });
-            } catch (error) {
-                return new Response(JSON.stringify({
-                    success: false,
-                    error: error.message,
-                    stack: error.stack
-                }), {
-                    status: 500,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Access-Control-Allow-Origin': '*'
-                    }
-                });
-            }
         }
 
         // 处理网站配置更新请求

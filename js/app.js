@@ -87,7 +87,7 @@ function initializeApp() {
 
     // 显示查询历史（如果有历史记录的话）
     if (typeof showQueryHistory === 'function') {
-        showQueryHistory();
+        showSimpleQueryHistory();
     }
 
     // 初始化完成
@@ -219,15 +219,15 @@ async function handleSearchSubmit(event) {
  */
 function handleSearchInputChange(event) {
     const value = event.target.value.trim();
-    
+
     if (value.length > 0) {
         // 自动检测单号类型
         const detectedType = TrackingUtils.detectTrackingType(value);
-        if (detectedType !== TrackingUtils.TRACKING_TYPES.AUTO && Elements.searchType.value === 'auto') {
+        if (detectedType !== TrackingUtils.TRACKING_TYPES.AUTO && Elements.searchType && Elements.searchType.value === 'auto') {
             // 可以选择是否自动更新选择框
             // Elements.searchType.value = detectedType;
         }
-        
+
         // 实时验证
         const validation = TrackingUtils.validateTrackingNumber(value);
         updateInputValidation(validation);
@@ -280,7 +280,7 @@ async function handleQuickSearch(event) {
     
     // 自动检测类型
     const detectedType = TrackingUtils.detectTrackingType(searchValue);
-    if (detectedType !== TrackingUtils.TRACKING_TYPES.AUTO) {
+    if (detectedType !== TrackingUtils.TRACKING_TYPES.AUTO && Elements.searchType) {
         Elements.searchType.value = detectedType;
     }
     
@@ -2074,9 +2074,9 @@ function removeHistoryItem(itemId) {
 }
 
 /**
- * 显示查询历史
+ * 显示查询历史（简单版本）
  */
-function showQueryHistory() {
+function showSimpleQueryHistory() {
     const historySection = document.getElementById('queryHistorySection');
     const historyContainer = document.getElementById('queryHistoryContainer');
 
@@ -2121,7 +2121,7 @@ function fillTrackingNumber(trackingRef) {
 function clearQueryHistory() {
     if (confirm('确定要清空查询历史吗？')) {
         TrackingUtils.clearSimpleQueryHistory();
-        showQueryHistory();
+        showSimpleQueryHistory();
         TrackingUtils.showToast('查询历史已清空', 'info');
     }
 }
@@ -2132,7 +2132,7 @@ function clearQueryHistory() {
 function saveToHistory(trackingRef) {
     // 使用TrackingUtils中的实现
     TrackingUtils.saveToHistory(trackingRef);
-    showQueryHistory();
+    showSimpleQueryHistory();
 }
 
 // ===================================
