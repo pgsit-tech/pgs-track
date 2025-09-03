@@ -267,7 +267,7 @@ async function queryTrackingInfo(trackingRef, companyId = 'default') {
 }
 
 /**
- * 🆕 简化的官网API查询（只使用官网API，不轮询多公司）
+ * 🆕 直接调用官网API查询（绕过代理，直接访问官网）
  * @param {string} trackingRef - 查询参数（JobNum）
  * @returns {Promise<Object>} 查询结果
  */
@@ -277,15 +277,47 @@ async function queryOfficialAPIOnly(trackingRef) {
     }
 
     try {
-        // 直接调用官网API，不使用多公司轮询
-        const result = await queryTrackingInfo(trackingRef, 'official');
+        // 🌐 直接调用CBEL官网API，不通过任何代理
+        const officialApiUrl = 'http://cbel.pgs-log.com/edi/pubTracking';
+
+        const response = await fetch(officialApiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json'
+            },
+            body: `jobNum=${encodeURIComponent(trackingRef)}`
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        // 检查官网API响应
+        if (!data || data.state === undefined) {
+            throw new Error('官网API返回数据格式错误');
+        }
+
+        // 格式化为统一的响应格式
+        const formattedResult = {
+            success: true,
+            trackingRef: trackingRef,
+            apiVersion: 'official',
+            data: data,
+            timestamp: new Date().toISOString(),
+            companyId: 'official',
+            companyName: 'CBEL官网',
+            source: 'official-direct'
+        };
 
         return {
             primaryResult: {
                 companyId: 'official',
                 companyName: 'CBEL官网',
                 success: true,
-                ...result
+                ...formattedResult
             },
             summary: {
                 totalAttempts: 1,
