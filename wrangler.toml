@@ -1,5 +1,6 @@
 # PGS Tracking System - Cloudflare Workers 配置
 # 更新日期: 2025-01-03
+# 注意: 这将更新现有的 pgs-tracking-proxy worker
 
 name = "pgs-tracking-proxy"
 main = "workers/proxy.js"

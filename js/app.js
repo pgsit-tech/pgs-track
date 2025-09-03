@@ -85,11 +85,10 @@ function initializeApp() {
     // 加载用户偏好设置
     loadUserPreferences();
 
-    // 加载查询历史
-    loadQueryHistory();
-
-    // 显示查询历史
-    showQueryHistory();
+    // 显示查询历史（如果有历史记录的话）
+    if (typeof showQueryHistory === 'function') {
+        showQueryHistory();
+    }
 
     // 初始化完成
     debugLog('✅ 应用初始化完成');
