@@ -431,22 +431,22 @@ async function performSingleSearch(trackingNumber, trackingType) {
 
         debugLog(`🔍 开始单号查询: ${trackingNumber} (类型: ${trackingType})`);
 
-        // 🆕 只使用官网API查询，不轮询多公司
-        const result = await TrackingAPI.queryOfficialAPIOnly(trackingNumber);
+        // 🌐 使用简化的Workers代理查询（只调用官网API）
+        const result = await TrackingAPI.queryTrackingInfo(trackingNumber, 'official');
 
         // 格式化结果数据
         const formattedData = TrackingAPI.formatTrackingData(
-            result.primaryResult.data.data,  // 提取嵌套的data字段
-            result.primaryResult.apiVersion
+            result.data,  // 直接使用data字段
+            result.apiVersion
         );
 
         // 显示查询结果
         showSingleSearchResults({
             trackingNumber,
             trackingType,
-            result: result.primaryResult,
+            result: result,  // 直接使用result
             formattedData: formattedData,
-            summary: result.summary
+            summary: formattedData.summary  // 使用格式化数据中的summary
         });
 
         // 保存到查询历史
