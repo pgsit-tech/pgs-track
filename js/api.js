@@ -206,9 +206,7 @@ async function queryTrackingInfo(trackingRef, companyId = 'default') {
         throw new Error('查询参数不能为空');
     }
     
-    // 临时禁用缓存以测试智能切换功能 - 版本标识: 2025-07-15-10:00
-    console.log('🔄🔄🔄 缓存已禁用，强制调用API (新版本):', trackingRef);
-    console.log('🚀🚀🚀 智能切换功能已激活！');
+    // � 移除调试日志，简化查询过程
 
     // TODO: 恢复缓存功能
     // const cacheKey = `tracking_${trackingRef}_${companyId}`;
@@ -225,7 +223,6 @@ async function queryTrackingInfo(trackingRef, companyId = 'default') {
     
     // 使用v5 API（官方推荐版本）
     try {
-        console.log(`尝试v5 API查询: ${trackingRef} (公司: ${companyId})`);
         const url = `${API_CONFIG.baseUrl}/v5/tracking?trackingRef=${encodeURIComponent(trackingRef)}&companyId=${encodeURIComponent(companyId)}`;
 
         const response = await fetchWithRetry(url, {
@@ -235,10 +232,7 @@ async function queryTrackingInfo(trackingRef, companyId = 'default') {
 
         const data = await response.json();
 
-        // 🔍 调试：查看Worker返回的完整数据结构
-        console.log('🔍 Worker返回的完整数据:', JSON.stringify(data, null, 2));
-        console.log('🔍 data.apiVersion:', data.apiVersion);
-        console.log('🔍 data.data:', data.data);
+        // � 移除调试日志，简化输出
 
         // 检查API响应是否成功
         if (data && (data.success === false || data.code === 404 || data.code >= 400)) {
@@ -273,7 +267,41 @@ async function queryTrackingInfo(trackingRef, companyId = 'default') {
 }
 
 /**
+ * 🆕 简化的官网API查询（只使用官网API，不轮询多公司）
+ * @param {string} trackingRef - 查询参数（JobNum）
+ * @returns {Promise<Object>} 查询结果
+ */
+async function queryOfficialAPIOnly(trackingRef) {
+    if (!trackingRef) {
+        throw new Error('查询参数不能为空');
+    }
+
+    try {
+        // 直接调用官网API，不使用多公司轮询
+        const result = await queryTrackingInfo(trackingRef, 'official');
+
+        return {
+            primaryResult: {
+                companyId: 'official',
+                companyName: 'CBEL官网',
+                success: true,
+                ...result
+            },
+            summary: {
+                totalAttempts: 1,
+                successfulAttempts: 1,
+                failedAttempts: 0,
+                primarySource: 'CBEL官网'
+            }
+        };
+    } catch (error) {
+        throw new Error(`官网API查询失败: ${error.message}`);
+    }
+}
+
+/**
  * 多公司API轮询查询单个订单轨迹（方案A：依次尝试直到成功）
+ * @deprecated 已弃用，请使用 queryOfficialAPIOnly
  * @param {string} trackingRef - 查询参数（JobNum）
  * @returns {Promise<Object>} 查询结果
  */
@@ -282,7 +310,7 @@ async function queryTrackingInfoFromAllCompanies(trackingRef) {
         throw new Error('查询参数不能为空');
     }
 
-    console.log(`🔍 开始多公司轮询查询: ${trackingRef}`);
+    // 🔇 移除详细日志输出，简化查询过程
 
     // 按优先级排序公司配置
     const companyConfigs = getCompanyConfigs();
@@ -296,7 +324,6 @@ async function queryTrackingInfoFromAllCompanies(trackingRef) {
     // 依次尝试每个公司API，直到找到成功的结果
     for (const [companyId, config] of companies) {
         try {
-            console.log(`🔄 尝试查询 ${config.name} (${companyId})...`);
             const result = await queryTrackingInfo(trackingRef, companyId);
 
             const companyResult = {
@@ -310,11 +337,9 @@ async function queryTrackingInfoFromAllCompanies(trackingRef) {
             attemptResults.push(companyResult);
             successResult = companyResult;
 
-            console.log(`✅ 查询成功 - 来源: ${companyResult.companyName} (第${companyResult.attemptOrder}次尝试)`);
             break; // 找到成功结果，停止尝试其他公司
 
         } catch (error) {
-            console.warn(`❌ ${config.name} 查询失败:`, error.message);
             attemptResults.push({
                 companyId,
                 companyName: config.name,
@@ -802,7 +827,8 @@ if (typeof window !== 'undefined') {
 
         // 核心查询功能
         queryTrackingInfo,
-        queryTrackingInfoFromAllCompanies,
+        queryOfficialAPIOnly, // 🆕 只使用官网API的简化查询
+        queryTrackingInfoFromAllCompanies, // @deprecated 保留兼容性
         queryBatchTrackingInfo,
 
         // 数据处理

@@ -431,8 +431,8 @@ async function performSingleSearch(trackingNumber, trackingType) {
 
         debugLog(`🔍 开始单号查询: ${trackingNumber} (类型: ${trackingType})`);
 
-        // 调用多公司API汇聚查询
-        const result = await TrackingAPI.queryTrackingInfoFromAllCompanies(trackingNumber);
+        // 🆕 只使用官网API查询，不轮询多公司
+        const result = await TrackingAPI.queryOfficialAPIOnly(trackingNumber);
 
         // 格式化结果数据
         const formattedData = TrackingAPI.formatTrackingData(

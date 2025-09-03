@@ -18,7 +18,7 @@ window.PRODUCTION_CONFIG = {
     // 功能开关
     features: {
         batchQuery: true,
-        multiCompany: true,
+        multiCompany: false, // 🚫 屏蔽多公司API查询，只使用官网API
         exportData: true,
         queryHistory: true,
         realTimeUpdates: true
@@ -53,7 +53,8 @@ if (typeof window !== 'undefined') {
     // 合并到全局配置
     window.SITE_CONFIG = window.SITE_CONFIG || {};
     Object.assign(window.SITE_CONFIG, window.PRODUCTION_CONFIG);
-    
-    console.log('✅ 生产环境配置已加载');
-    console.log('🔗 Workers代理URL:', window.WORKERS_PROXY_URL);
+
+    // 🔇 生产环境不显示配置加载日志
+    // console.log('✅ 生产环境配置已加载');
+    // console.log('🔗 Workers代理URL:', window.WORKERS_PROXY_URL);
 }
