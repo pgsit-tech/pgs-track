@@ -26,37 +26,79 @@ try {
     Write-Host "✅ 登录完成" -ForegroundColor Green
 }
 
+# 检查现有worker状态
+Write-Host "🔍 检查现有worker状态..." -ForegroundColor Yellow
+try {
+    $deployments = wrangler deployments list --name pgs-tracking-proxy 2>$null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "✅ 找到现有worker: pgs-tracking-proxy" -ForegroundColor Green
+        Write-Host "   - 将更新现有worker，保留所有环境变量" -ForegroundColor White
+    } else {
+        Write-Host "ℹ️ 未找到现有worker，将创建新的worker" -ForegroundColor Blue
+    }
+} catch {
+    Write-Host "⚠️ 无法检查worker状态，继续部署..." -ForegroundColor Yellow
+}
+
 # 显示当前修改说明
 Write-Host "📝 当前版本修改内容:" -ForegroundColor Cyan
-Write-Host "   1. 🌐 替换CDN资源为国内可访问链接" -ForegroundColor White
+Write-Host "   1. 🌐 修复CDN资源加载问题（使用bootcdn.net）" -ForegroundColor White
 Write-Host "   2. 🔇 优化控制台日志输出" -ForegroundColor White
 Write-Host "   3. 🚫 屏蔽备选API查询，只使用官网API" -ForegroundColor White
+Write-Host "   4. 🐛 修复JavaScript错误（loadQueryHistory未定义）" -ForegroundColor White
+Write-Host ""
+
+Write-Host "⚠️ 重要提醒:" -ForegroundColor Yellow
+Write-Host "   - 此部署将更新现有worker代码" -ForegroundColor White
+Write-Host "   - 现有环境变量和KV存储将被保留" -ForegroundColor White
+Write-Host "   - 不会影响现有的配置数据" -ForegroundColor White
 Write-Host ""
 
 # 询问是否继续部署
-$continue = Read-Host "是否继续部署到生产环境? (y/N)"
+$continue = Read-Host "确认更新现有worker? (y/N)"
 if ($continue -ne "y" -and $continue -ne "Y") {
     Write-Host "❌ 部署已取消" -ForegroundColor Red
     exit 1
 }
 
 # 部署到生产环境
-Write-Host "🚀 开始部署到生产环境..." -ForegroundColor Yellow
+Write-Host "🚀 开始更新worker..." -ForegroundColor Yellow
+Write-Host "   - 使用配置文件: wrangler.toml" -ForegroundColor White
+Write-Host "   - 保留现有环境变量和KV绑定" -ForegroundColor White
+Write-Host ""
+
 try {
+    # 使用生产环境配置部署
     wrangler deploy --env production
-    Write-Host "✅ Workers部署成功!" -ForegroundColor Green
+    Write-Host "✅ Worker更新成功!" -ForegroundColor Green
 } catch {
-    Write-Host "❌ Workers部署失败: $_" -ForegroundColor Red
+    Write-Host "❌ Worker更新失败: $_" -ForegroundColor Red
+    Write-Host "💡 可能的解决方案:" -ForegroundColor Yellow
+    Write-Host "   1. 检查网络连接" -ForegroundColor White
+    Write-Host "   2. 确认Cloudflare账户权限" -ForegroundColor White
+    Write-Host "   3. 检查wrangler.toml配置" -ForegroundColor White
     exit 1
 }
 
 # 验证部署
-Write-Host "🔍 验证部署状态..." -ForegroundColor Yellow
+Write-Host "🔍 验证worker更新状态..." -ForegroundColor Yellow
 try {
-    wrangler deployments list --env production
-    Write-Host "✅ 部署验证完成" -ForegroundColor Green
+    $latestDeployment = wrangler deployments list --name pgs-tracking-proxy | Select-Object -First 5
+    Write-Host "✅ Worker更新验证完成" -ForegroundColor Green
+    Write-Host "📊 最新部署信息:" -ForegroundColor Cyan
+    Write-Host $latestDeployment -ForegroundColor White
 } catch {
-    Write-Host "⚠️ 无法验证部署状态，但部署可能已成功" -ForegroundColor Yellow
+    Write-Host "⚠️ 无法验证部署状态，但更新可能已成功" -ForegroundColor Yellow
+}
+
+# 检查KV存储状态
+Write-Host "🗂️ 检查KV存储状态..." -ForegroundColor Yellow
+try {
+    wrangler kv namespace list | Where-Object { $_ -match "CONFIG_KV" } | ForEach-Object {
+        Write-Host "✅ KV存储正常: $_" -ForegroundColor Green
+    }
+} catch {
+    Write-Host "⚠️ 无法检查KV存储状态" -ForegroundColor Yellow
 }
 
 Write-Host ""

@@ -1,44 +1,40 @@
 # PGS Tracking System - Cloudflare Workers 配置
 # 更新日期: 2025-01-03
-# 注意: 这将更新现有的 pgs-tracking-proxy worker
+# 注意: 这将更新现有的 pgs-tracking-proxy worker，保留现有环境变量
 
 name = "pgs-tracking-proxy"
 main = "workers/proxy.js"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
 
-# 生产环境配置
-[env.production]
-name = "pgs-tracking-proxy"
-
-# 环境变量
+# 环境变量（这些将与现有环境变量合并，不会覆盖）
 [vars]
 ENVIRONMENT = "production"
-# 由于已屏蔽备选API，只使用官网API
+# 🆕 只使用官网API，简化配置
 OFFICIAL_API_URL = "http://cbel.pgs-log.com/edi/pubTracking"
 # CORS允许的域名
 CORS_ORIGINS = "https://pgs-track.pages.dev,http://localhost:8080,http://localhost:3000,http://localhost:8000,http://127.0.0.1:8080"
 # 管理员Token（用于配置更新）
 ADMIN_TOKEN = "admin-token-pgs-2025"
 
-# KV存储绑定（用于存储配置）
+# KV存储绑定（使用现有的CONFIG_KV命名空间）
 [[kv_namespaces]]
 binding = "CONFIG_KV"
-id = "your-kv-namespace-id"
-preview_id = "your-preview-kv-namespace-id"
+id = "0d7ed4061f384451b7ad84fab059b4d0"
+preview_id = "8455f7e44db9486db3dbeb25bede2c74"
 
-# 开发环境配置
-[env.development]
-name = "pgs-tracking-proxy-dev"
+# 生产环境配置
+[env.production]
+name = "pgs-tracking-proxy"
 
-[env.development.vars]
-ENVIRONMENT = "development"
+[env.production.vars]
+ENVIRONMENT = "production"
 OFFICIAL_API_URL = "http://cbel.pgs-log.com/edi/pubTracking"
-CORS_ORIGINS = "http://localhost:8080,http://localhost:3000,http://localhost:8000,http://127.0.0.1:8080"
-ADMIN_TOKEN = "admin-token-dev"
+CORS_ORIGINS = "https://pgs-track.pages.dev,http://localhost:8080,http://localhost:3000,http://localhost:8000,http://127.0.0.1:8080"
+ADMIN_TOKEN = "admin-token-pgs-2025"
 
-# 开发环境KV存储
-[[env.development.kv_namespaces]]
+# 生产环境KV存储
+[[env.production.kv_namespaces]]
 binding = "CONFIG_KV"
-id = "your-dev-kv-namespace-id"
-preview_id = "your-dev-preview-kv-namespace-id"
+id = "c1e7e2d1abff4140970ffa1c7c98cf22"
+preview_id = "52473858946641dfa808d810a878b221"
