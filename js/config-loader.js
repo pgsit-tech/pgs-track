@@ -23,7 +23,7 @@ async function loadSiteConfig() {
 
         // 1. 首先尝试从Workers代理获取配置（添加缓存破坏参数）
         try {
-            const kvResponse = await fetch(`https://track-api.20990909.xyz/config/site?t=${Date.now()}&v=20250903093500`, {
+            const kvResponse = await fetch(`https://track-api.20990909.xyz/config/site?t=${Date.now()}&v=20250903100000`, {
                 method: 'GET',
                 headers: {
                     'Origin': window.location.origin,

@@ -13,7 +13,7 @@ ENVIRONMENT = "production"
 # 🆕 只使用官网API，简化配置
 OFFICIAL_API_URL = "http://cbel.pgs-log.com/edi/pubTracking"
 # CORS允许的域名
-CORS_ORIGINS = "https://pgs-track.pages.dev,http://localhost:8080,http://localhost:3000,http://localhost:8000,http://127.0.0.1:8080"
+CORS_ORIGINS = "https://tracking.pgs-cbel.com,https://pgs-track.pages.dev,http://localhost:8080,http://localhost:3000,http://localhost:8000,http://127.0.0.1:8080"
 # 管理员Token（用于配置更新）
 ADMIN_TOKEN = "admin-token-pgs-2025"
 

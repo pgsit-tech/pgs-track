@@ -45,15 +45,9 @@ const API_CONFIG = {
             return window.WORKERS_PROXY_URL;
         }
 
-        // 生产环境优先使用直接API调用
-        if (hostname.includes('pages.dev') || hostname.includes('pgs-cbel.com')) {
-            apiDebugLog('🎯 生产环境，使用直接API调用 ws.ai-ops.vip');
-            return 'https://ws.ai-ops.vip/edi/web-services';
-        }
-
-        // 默认使用Worker代理
+        // 统一使用自定义域名Worker代理（解决国内网络访问问题）
         const proxyUrl = 'https://track-api.20990909.xyz/api/au-ops';
-        apiDebugLog('🔄 默认使用Worker代理:', proxyUrl);
+        apiDebugLog('🔄 使用自定义域名Worker代理:', proxyUrl);
         return proxyUrl;
     })(),
     
