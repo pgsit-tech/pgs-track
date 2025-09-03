@@ -21,13 +21,14 @@ async function loadSiteConfig() {
     try {
         configDebugLog('🔧 加载站点配置...');
 
-        // 1. 首先尝试从KV存储获取配置
+        // 1. 首先尝试从KV存储获取配置（添加缓存破坏参数）
         try {
-            const kvResponse = await fetch('https://track-api.20990909.xyz/config/site', {
+            const kvResponse = await fetch(`https://track-api.20990909.xyz/config/site?t=${Date.now()}`, {
                 method: 'GET',
                 headers: {
                     'Origin': window.location.origin,
-                    'Accept': 'application/json'
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache'
                 }
             });
 
