@@ -17,24 +17,8 @@ CORS_ORIGINS = "https://pgs-track.pages.dev,http://localhost:8080,http://localho
 # 管理员Token（用于配置更新）
 ADMIN_TOKEN = "admin-token-pgs-2025"
 
-# KV存储绑定（使用现有的CONFIG_KV命名空间）
+# KV存储绑定（统一使用正确的生产环境KV）
 [[kv_namespaces]]
-binding = "CONFIG_KV"
-id = "0d7ed4061f384451b7ad84fab059b4d0"
-preview_id = "8455f7e44db9486db3dbeb25bede2c74"
-
-# 生产环境配置
-[env.production]
-name = "pgs-tracking-proxy"
-
-[env.production.vars]
-ENVIRONMENT = "production"
-OFFICIAL_API_URL = "http://cbel.pgs-log.com/edi/pubTracking"
-CORS_ORIGINS = "https://pgs-track.pages.dev,http://localhost:8080,http://localhost:3000,http://localhost:8000,http://127.0.0.1:8080"
-ADMIN_TOKEN = "admin-token-pgs-2025"
-
-# 生产环境KV存储
-[[env.production.kv_namespaces]]
 binding = "CONFIG_KV"
 id = "c1e7e2d1abff4140970ffa1c7c98cf22"
 preview_id = "52473858946641dfa808d810a878b221"
