@@ -436,8 +436,8 @@ async function performSingleSearch(trackingNumber, trackingType) {
 
         // 格式化结果数据（多公司汇聚查询返回格式）
         const formattedData = TrackingAPI.formatTrackingData(
-            result.data,  // 多公司查询返回的data字段
-            result.apiVersion || 'official'
+            result.primaryResult,  // 多公司查询返回的primaryResult字段
+            result.primaryResult?.apiVersion || 'official'
         );
 
         // 显示查询结果
