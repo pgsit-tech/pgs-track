@@ -4,6 +4,22 @@
  */
 
 // ===================================
+// 调试配置
+// ===================================
+
+/**
+ * 调试模式开关 - 生产环境设为false
+ */
+const API_DEBUG_MODE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+/**
+ * API调试日志函数
+ */
+const apiDebugLog = API_DEBUG_MODE ? console.log : () => {};
+const apiDebugWarn = console.warn;
+const apiDebugError = console.error;
+
+// ===================================
 // API配置
 // ===================================
 
@@ -14,30 +30,30 @@ const API_CONFIG = {
     // 根据环境选择API基础URL - 智能选择直接调用或代理
     baseUrl: (() => {
         const hostname = window.location.hostname;
-        console.log('🌐 当前域名:', hostname);
+        apiDebugLog('🌐 当前域名:', hostname);
 
         // 本地开发环境使用Worker代理（避免CORS问题）
         if (hostname === 'localhost' || hostname === '127.0.0.1') {
             const proxyUrl = 'https://track-api.20990909.xyz/api/au-ops';
-            console.log('🏠 本地开发环境，使用Worker代理:', proxyUrl);
+            apiDebugLog('🏠 本地开发环境，使用Worker代理:', proxyUrl);
             return proxyUrl;
         }
 
         // 检查是否有环境变量配置的代理URL
         if (typeof window !== 'undefined' && window.WORKERS_PROXY_URL) {
-            console.log('🔧 使用环境变量配置的代理URL:', window.WORKERS_PROXY_URL);
+            apiDebugLog('🔧 使用环境变量配置的代理URL:', window.WORKERS_PROXY_URL);
             return window.WORKERS_PROXY_URL;
         }
 
         // 生产环境优先使用直接API调用
         if (hostname.includes('pages.dev') || hostname.includes('pgs-cbel.com')) {
-            console.log('🎯 生产环境，使用直接API调用 ws.ai-ops.vip');
+            apiDebugLog('🎯 生产环境，使用直接API调用 ws.ai-ops.vip');
             return 'https://ws.ai-ops.vip/edi/web-services';
         }
 
         // 默认使用Worker代理
         const proxyUrl = 'https://track-api.20990909.xyz/api/au-ops';
-        console.log('🔄 默认使用Worker代理:', proxyUrl);
+        apiDebugLog('🔄 默认使用Worker代理:', proxyUrl);
         return proxyUrl;
     })(),
     
@@ -81,12 +97,12 @@ function getCompanyConfigs() {
                 enabled: company.enabled !== false
             };
         });
-        console.log('✅ 使用动态公司配置:', Object.keys(dynamicConfigs));
+        apiDebugLog('✅ 使用动态公司配置:', Object.keys(dynamicConfigs));
         return dynamicConfigs;
     }
 
     // 回退到硬编码配置（兼容性）
-    console.log('⚠️ 使用硬编码公司配置（回退）');
+    apiDebugWarn('⚠️ 使用硬编码公司配置（回退）');
     return {
         company1: {
             name: '总公司',

@@ -4,6 +4,22 @@
  */
 
 // ===================================
+// 调试配置
+// ===================================
+
+/**
+ * 调试模式开关 - 生产环境设为false
+ */
+const DEBUG_MODE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+/**
+ * 调试日志函数
+ */
+const debugLog = DEBUG_MODE ? console.log : () => {};
+const debugWarn = console.warn;
+const debugError = console.error;
+
+// ===================================
 // 应用状态管理
 // ===================================
 
@@ -58,17 +74,17 @@ const Elements = {
  * 初始化应用
  */
 function initializeApp() {
-    console.log('🚀 AU-OPS 轨迹查询系统初始化');
-    
+    debugLog('🚀 PGS 轨迹查询系统初始化');
+
     // 获取DOM元素引用
     initializeElements();
-    
+
     // 绑定事件监听器
     bindEventListeners();
-    
+
     // 加载用户偏好设置
     loadUserPreferences();
-    
+
     // 加载查询历史
     loadQueryHistory();
 
@@ -76,8 +92,10 @@ function initializeApp() {
     showQueryHistory();
 
     // 初始化完成
-    console.log('✅ 应用初始化完成');
-    TrackingUtils.showToast('应用初始化完成', 'success', 2000);
+    debugLog('✅ 应用初始化完成');
+    if (DEBUG_MODE) {
+        TrackingUtils.showToast('应用初始化完成', 'success', 2000);
+    }
 }
 
 /**
@@ -111,7 +129,7 @@ function initializeElements() {
     // 错误信息
     Elements.errorMessage = document.getElementById('errorMessage');
 
-    console.log('📋 DOM元素引用初始化完成');
+    debugLog('📋 DOM元素引用初始化完成');
 }
 
 /**
@@ -147,7 +165,7 @@ function bindEventListeners() {
         Elements.retryBtn.addEventListener('click', handleRetry);
     }
 
-    console.log('🔗 事件监听器绑定完成');
+    debugLog('🔗 事件监听器绑定完成');
 }
 
 // ===================================
@@ -412,7 +430,7 @@ async function performSingleSearch(trackingNumber, trackingType) {
         // 显示加载状态
         showLoadingState();
 
-        console.log(`🔍 开始单号查询: ${trackingNumber} (类型: ${trackingType})`);
+        debugLog(`🔍 开始单号查询: ${trackingNumber} (类型: ${trackingType})`);
 
         // 调用多公司API汇聚查询
         const result = await TrackingAPI.queryTrackingInfoFromAllCompanies(trackingNumber);
@@ -435,10 +453,10 @@ async function performSingleSearch(trackingNumber, trackingType) {
         // 保存到查询历史
         saveToHistory(trackingNumber);
 
-        console.log('✅ 单号查询成功');
+        debugLog('✅ 单号查询成功');
 
     } catch (error) {
-        console.error('❌ 单号查询失败:', error);
+        debugError('❌ 单号查询失败:', error);
         showErrorState(error.message);
 
     } finally {
@@ -466,7 +484,7 @@ async function performMultiSearch(trackingNumbers) {
         // 显示加载状态
         showLoadingState();
 
-        console.log(`🔍 开始多单号查询: ${trackingNumbers.length} 个单号`);
+        debugLog(`🔍 开始多单号查询: ${trackingNumbers.length} 个单号`);
 
         // 验证所有单号
         const validationResults = trackingNumbers.map(num => {
@@ -499,10 +517,10 @@ async function performMultiSearch(trackingNumbers) {
             queryResults: results
         });
 
-        console.log('✅ 多单号查询完成');
+        debugLog('✅ 多单号查询完成');
 
     } catch (error) {
-        console.error('❌ 多单号查询失败:', error);
+        debugError('❌ 多单号查询失败:', error);
         showErrorState(error.message);
 
     } finally {

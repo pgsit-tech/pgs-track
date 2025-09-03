@@ -4,6 +4,22 @@
  */
 
 // ===================================
+// 调试配置
+// ===================================
+
+/**
+ * 调试模式开关
+ */
+const WORKER_DEBUG_MODE = false; // 生产环境设为false
+
+/**
+ * Workers调试日志函数
+ */
+const workerDebugLog = WORKER_DEBUG_MODE ? console.log : () => {};
+const workerDebugWarn = console.warn;
+const workerDebugError = console.error;
+
+// ===================================
 // 配置常量
 // ===================================
 
@@ -203,7 +219,6 @@ async function handleTrackingRequest(request, apiPath, env) {
     try {
         const url = new URL(request.url);
         const trackingRef = url.searchParams.get('trackingRef');
-        const companyId = url.searchParams.get('companyId'); // 获取指定的公司ID
 
         if (!trackingRef) {
             return createErrorResponse('查询参数无效', 400);
@@ -214,10 +229,10 @@ async function handleTrackingRequest(request, apiPath, env) {
             return createErrorResponse('查询参数格式错误', 400);
         }
 
-        // 🚀 智能切换方案：优先官网API，失败则切换AU-OPS API
-        console.log('🚀 开始智能切换查询方案');
+        // 🚀 使用官网API进行查询（屏蔽备选API）
+        console.log('🚀 开始官网API查询');
 
-        // 1. 优先尝试官网API（5秒超时）
+        // 1. 尝试官网API（5秒超时）
         const officialResult = await callOfficialAPI(trackingRef);
 
         if (officialResult.success) {
@@ -241,149 +256,9 @@ async function handleTrackingRequest(request, apiPath, env) {
             return createSuccessResponse(responseData, request.headers.get('Origin'), env);
         }
 
-        // 2. 官网API失败，切换到AU-OPS API备选方案
-        console.log('⚠️ 官网API失败，切换到AU-OPS API备选方案');
-
-        // 从KV存储获取动态公司配置
-        const companyConfigs = await getDynamicCompanyConfigs(env);
-        console.log('获取到的公司配置:', Object.keys(companyConfigs));
-
-        let selectedCompany = null;
-        let selectedCompanyId = null;
-
-        // 如果指定了公司ID，优先使用指定的公司
-        if (companyId && companyConfigs[companyId]) {
-            const company = companyConfigs[companyId];
-            if (company.enabled && company.appKey && company.appToken) {
-                selectedCompany = company;
-                selectedCompanyId = companyId;
-                console.log('使用指定公司配置:', company.name);
-            }
-        }
-
-        // 如果没有指定公司或指定的公司不可用，选择第一个可用的公司
-        if (!selectedCompany) {
-            const availableCompanies = Object.entries(companyConfigs)
-                .filter(([id, company]) => company.enabled && company.appKey && company.appToken)
-                .sort(([,a], [,b]) => a.priority - b.priority);
-
-            if (availableCompanies.length > 0) {
-                [selectedCompanyId, selectedCompany] = availableCompanies[0];
-                console.log('使用默认公司配置:', selectedCompany.name);
-            }
-        }
-
-        if (!selectedCompany) {
-            console.error('没有找到可用的API配置，配置详情:', companyConfigs);
-            return createErrorResponse('API配置未完成，请联系管理员', 500);
-        }
-
-        const appKey = selectedCompany.appKey;
-        const appToken = selectedCompany.appToken;
-
-        // 尝试多个API地址，使用官方推荐的认证方式
-        let auOpsResponse = null;
-        let lastError = null;
-
-        for (const baseUrl of AU_OPS_CONFIG.baseUrls) {
-            try {
-                const auOpsUrl = `${baseUrl}${apiPath}?trackingRef=${encodeURIComponent(trackingRef)}`;
-
-                console.log('🎯 尝试AU-OPS API:', baseUrl);
-                console.log('🔗 完整URL:', auOpsUrl);
-                console.log('🔑 API密钥长度:', appKey ? appKey.length : 'undefined');
-                console.log('🔑 Token长度:', appToken ? appToken.length : 'undefined');
-                console.log('🔑 API密钥前缀:', appKey ? appKey.substring(0, 10) + '...' : 'undefined');
-                console.log('🔑 Token前缀:', appToken ? appToken.substring(0, 10) + '...' : 'undefined');
-                console.log('🔑 Token后缀:', appToken ? '...' + appToken.substring(appToken.length - 10) : 'undefined');
-
-                auOpsResponse = await fetch(auOpsUrl, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'appKey': appKey,
-                        'appToken': appToken,
-                        'Request-Origion': 'SwaggerBootstrapUi',
-                        'accept': 'application/json',
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                        'Referer': baseUrl.includes('ws.ai-ops.vip') ? 'https://ws.ai-ops.vip/' : 'https://prod.au-ops.com/',
-                        'Origin': baseUrl.includes('ws.ai-ops.vip') ? 'https://ws.ai-ops.vip' : 'https://prod.au-ops.com'
-                    },
-                    signal: AbortSignal.timeout(AU_OPS_CONFIG.timeout)
-                });
-
-                // 如果请求成功，跳出循环
-                if (auOpsResponse.ok) {
-                    console.log('✅ API调用成功:', baseUrl);
-                    // 检查响应内容
-                    const responseText = await auOpsResponse.text();
-                    console.log('📄 API响应内容:', responseText.substring(0, 200));
-
-                    // 重新创建Response对象，因为已经读取了body
-                    auOpsResponse = new Response(responseText, {
-                        status: auOpsResponse.status,
-                        statusText: auOpsResponse.statusText,
-                        headers: auOpsResponse.headers
-                    });
-                    break;
-                } else {
-                    console.log(`❌ API调用失败 (${auOpsResponse.status}):`, baseUrl);
-                    lastError = `${baseUrl} returned ${auOpsResponse.status}`;
-                }
-            } catch (error) {
-                console.log(`❌ API调用异常:`, baseUrl, error.message);
-                lastError = error.message;
-                auOpsResponse = null;
-            }
-        }
-
-        // 如果所有API地址都失败
-        if (!auOpsResponse || !auOpsResponse.ok) {
-            console.error('所有AU-OPS API地址都失败');
-            return createErrorResponse('查询失败', 503);
-        }
-        
-        if (!auOpsResponse.ok) {
-            const errorText = await auOpsResponse.text();
-            console.error(`AU-OPS API错误 (${auOpsResponse.status}):`, errorText);
-            return createErrorResponse('查询失败，请稍后重试', auOpsResponse.status);
-        }
-        
-        const data = await auOpsResponse.json();
-
-        // 检查AU-OPS API响应内容，判断是否为有效数据
-        const isValidData = data &&
-            data.code !== 404 &&
-            data.code !== 400 &&
-            !(data.code >= 400) &&
-            data.description !== "Not found!" &&
-            !(data.error && data.error.includes('not found'));
-
-        if (!isValidData) {
-            console.log(`❌ AU-OPS API返回无效数据: ${JSON.stringify(data)}`);
-            return createErrorResponse(
-                data.description || data.error || '未找到轨迹数据',
-                data.code || 404
-            );
-        }
-
-        // 添加代理信息
-        const responseData = {
-            success: true,
-            trackingRef: trackingRef,
-            apiVersion: apiPath.includes('v5') ? 'v5' : 'v3',
-            data: data,
-            timestamp: new Date().toISOString(),
-            companyId: selectedCompanyId,
-            companyName: selectedCompany.name,
-            proxy: {
-                version: '1.0.0',
-                endpoint: apiPath,
-                source: 'au-ops-fallback' // 标记这是备选方案
-            }
-        };
-
-        return createSuccessResponse(responseData, request.headers.get('Origin'), env);
+        // 2. 官网API失败，直接返回错误（不使用备选API）
+        console.log('❌ 官网API查询失败，返回错误');
+        return createErrorResponse(officialResult.error || '查询失败，请稍后重试', 503);
         
     } catch (error) {
         console.error('轨迹查询处理错误:', error);
@@ -889,7 +764,7 @@ async function handleSiteConfigGet(request, env) {
 }
 
 export default {
-    async fetch(request, env, ctx) {
+    async fetch(request, env) {
         const url = new URL(request.url);
 
         // 处理配置更新请求

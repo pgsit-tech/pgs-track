@@ -3,6 +3,14 @@
  * 动态加载配置文件并应用到页面
  */
 
+// 调试模式开关
+const CONFIG_DEBUG_MODE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+// 配置调试日志函数
+const configDebugLog = CONFIG_DEBUG_MODE ? console.log : () => {};
+const configDebugWarn = console.warn;
+const configDebugError = console.error;
+
 // 全局配置对象
 window.SITE_CONFIG = {};
 
@@ -11,7 +19,7 @@ window.SITE_CONFIG = {};
  */
 async function loadSiteConfig() {
     try {
-        console.log('🔧 加载站点配置...');
+        configDebugLog('🔧 加载站点配置...');
 
         // 1. 首先尝试从KV存储获取配置
         try {
@@ -27,13 +35,13 @@ async function loadSiteConfig() {
                 const kvData = await kvResponse.json();
                 if (kvData.siteConfig) {
                     window.SITE_CONFIG = kvData.siteConfig;
-                    console.log('✅ 从KV存储加载配置成功:', window.SITE_CONFIG);
+                    configDebugLog('✅ 从KV存储加载配置成功:', window.SITE_CONFIG);
                     applySiteConfig();
                     return;
                 }
             }
         } catch (kvError) {
-            console.warn('⚠️ KV存储配置获取失败，尝试其他方式:', kvError);
+            configDebugWarn('⚠️ KV存储配置获取失败，尝试其他方式:', kvError);
         }
 
         // 2. 检查是否有管理端保存的配置（回退方案）
@@ -41,11 +49,11 @@ async function loadSiteConfig() {
         if (adminConfig) {
             try {
                 window.SITE_CONFIG = JSON.parse(adminConfig);
-                console.log('✅ 使用管理端本地配置:', window.SITE_CONFIG);
+                configDebugLog('✅ 使用管理端本地配置:', window.SITE_CONFIG);
                 applySiteConfig();
                 return;
             } catch (error) {
-                console.warn('⚠️ 管理端配置解析失败，尝试加载文件配置:', error);
+                configDebugWarn('⚠️ 管理端配置解析失败，尝试加载文件配置:', error);
             }
         }
 
@@ -56,13 +64,13 @@ async function loadSiteConfig() {
         }
 
         window.SITE_CONFIG = await response.json();
-        console.log('✅ 站点配置文件加载成功:', window.SITE_CONFIG);
+        configDebugLog('✅ 站点配置文件加载成功:', window.SITE_CONFIG);
 
         // 应用配置到页面
         applySiteConfig();
 
     } catch (error) {
-        console.warn('⚠️ 所有配置加载方式都失败，使用默认配置:', error);
+        configDebugWarn('⚠️ 所有配置加载方式都失败，使用默认配置:', error);
 
         // 使用默认配置
         window.SITE_CONFIG = getDefaultSiteConfig();
@@ -151,7 +159,7 @@ function applySiteConfig() {
     // 更新CSS变量
     updateCSSVariables(config.branding);
     
-    console.log('✅ 站点配置已应用到页面');
+    configDebugLog('✅ 站点配置已应用到页面');
 }
 
 /**
@@ -170,12 +178,12 @@ function updatePageMeta(siteConfig) {
             const titleElement = navbarBrand.querySelector('.ms-2');
             if (titleElement) {
                 titleElement.textContent = siteConfig.title;
-                console.log('✅ 导航栏标题已更新为:', siteConfig.title);
+                configDebugLog('✅ 导航栏标题已更新为:', siteConfig.title);
             } else {
-                console.warn('❌ 未找到导航栏标题元素 (.ms-2)');
+                configDebugWarn('❌ 未找到导航栏标题元素 (.ms-2)');
             }
         } else {
-            console.warn('❌ 未找到导航栏品牌元素 (.navbar-brand)');
+            configDebugWarn('❌ 未找到导航栏品牌元素 (.navbar-brand)');
         }
     }
     
