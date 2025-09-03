@@ -431,13 +431,13 @@ async function performSingleSearch(trackingNumber, trackingType) {
 
         debugLog(`🔍 开始单号查询: ${trackingNumber} (类型: ${trackingType})`);
 
-        // 🌐 使用简化的Workers代理查询（只调用官网API）
-        const result = await TrackingAPI.queryTrackingInfo(trackingNumber, 'official');
+        // 🌐 使用多公司汇聚查询（与批量查询保持一致）
+        const result = await TrackingAPI.queryTrackingInfoFromAllCompanies(trackingNumber);
 
-        // 格式化结果数据
+        // 格式化结果数据（多公司汇聚查询返回格式）
         const formattedData = TrackingAPI.formatTrackingData(
-            result.data,  // 直接使用data字段
-            result.apiVersion
+            result.data,  // 多公司查询返回的data字段
+            result.apiVersion || 'official'
         );
 
         // 显示查询结果
